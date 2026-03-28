@@ -6,6 +6,7 @@ import { PriceMonitor } from '../src/modules/price-monitor/index.js';
 import { BankManager } from '../src/modules/bank-manager/index.js';
 import { EmergencyStop } from '../src/modules/emergency-stop/index.js';
 import { calculatePricing } from '../src/modules/ad-manager/pricing.js';
+import { ChatRelay } from '../src/modules/chat-relay/index.js';
 import type { CriptoYaClient } from '../src/modules/price-monitor/criptoya.js';
 import type { EmergencyDeps } from '../src/modules/emergency-stop/index.js';
 import type { DB } from '../src/db/index.js';
@@ -156,6 +157,46 @@ describe('Smoke Tests — End-to-End Event Flow', () => {
     await emergencyStop.resolve('admin');
     expect(emergencyStop.getState()).toBe('running');
     expect(deps.startPolling).toHaveBeenCalledOnce();
+  });
+
+  it('chat relay forwards counterparty messages and handles replies', async () => {
+    const mockBybit = {
+      getOrderMessages: vi.fn().mockResolvedValue([
+        { content: 'Please pay here', contentType: '1', sendTime: 1000, fromUserId: 'counterparty-123' },
+      ]),
+      sendOrderMessage: vi.fn().mockResolvedValue(undefined),
+      sendOrderImage: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const mockTelegram = {
+      sendChatMessage: vi.fn().mockResolvedValue(42),
+      sendChatPhoto: vi.fn().mockResolvedValue(43),
+      registerChatMessage: vi.fn(),
+    };
+
+    const relay = new ChatRelay(bus, mockBybit as any, mockTelegram as any, 'self-id');
+
+    // Simulate new order
+    await bus.emit('order:new', {
+      orderId: 'smoke-ord-1', side: 'buy' as const, amount: 500, price: 9.33, counterparty: 'smoke_trader',
+    }, 'test');
+
+    expect(relay.getMonitoredCount()).toBe(1);
+
+    // Poll — should forward counterparty message
+    await relay.pollOnce();
+    expect(mockTelegram.sendChatMessage).toHaveBeenCalledWith('smoke-ord-1', 'smoke_trader', 'Please pay here');
+    expect(mockTelegram.registerChatMessage).toHaveBeenCalledWith(42, 'smoke-ord-1');
+
+    // Simulate reply from Telegram
+    await bus.emit('telegram:chat-reply', { orderId: 'smoke-ord-1', text: 'Paid!' }, 'test');
+    expect(mockBybit.sendOrderMessage).toHaveBeenCalledWith('smoke-ord-1', 'Paid!');
+
+    // Order completes — stop monitoring
+    await bus.emit('order:released', { orderId: 'smoke-ord-1', amount: 500, profit: 10 }, 'test');
+    expect(relay.getMonitoredCount()).toBe(0);
+
+    relay.stop();
   });
 
   it('events are persisted to event_log', async () => {
