@@ -54,6 +54,11 @@ export interface EventMap {
   'telegram:dispute': { orderId: string };
   'telegram:emergency': Record<string, never>;
   'telegram:command': { command: string; args: string[] };
+
+  // Chat relay events
+  'telegram:chat-reply': { orderId: string; text?: string; photoPath?: string };
+  'chat:message-received': { orderId: string; from: string; content: string; contentType: string };
+  'chat:message-sent': { orderId: string; content: string };
 }
 
 type Handler<T> = (payload: T) => void | Promise<void>;

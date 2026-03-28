@@ -20,6 +20,7 @@ export const envConfig = {
     apiKey: required('BYBIT_API_KEY'),
     apiSecret: required('BYBIT_API_SECRET'),
     testnet: optional('BYBIT_TESTNET', 'true') === 'true',
+    userId: optional('BYBIT_USER_ID', ''),
   },
   telegram: {
     botToken: required('TELEGRAM_BOT_TOKEN'),
