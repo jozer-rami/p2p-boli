@@ -1,0 +1,53 @@
+import 'dotenv/config';
+import { createModuleLogger } from './utils/logger.js';
+
+const log = createModuleLogger('config');
+
+function required(key: string): string {
+  const val = process.env[key];
+  if (!val) {
+    throw new Error(`Missing required env var: ${key}`);
+  }
+  return val;
+}
+
+function optional(key: string, fallback: string): string {
+  return process.env[key] || fallback;
+}
+
+export const envConfig = {
+  bybit: {
+    apiKey: required('BYBIT_API_KEY'),
+    apiSecret: required('BYBIT_API_SECRET'),
+    testnet: optional('BYBIT_TESTNET', 'true') === 'true',
+  },
+  telegram: {
+    botToken: required('TELEGRAM_BOT_TOKEN'),
+    chatId: required('TELEGRAM_CHAT_ID'),
+  },
+  db: {
+    path: optional('DB_PATH', './data/bot.db'),
+  },
+  log: {
+    level: optional('LOG_LEVEL', 'info'),
+  },
+} as const;
+
+/** Default config values seeded into the DB config table on first run */
+export const DEFAULT_CONFIG = {
+  min_spread: '0.015',
+  max_spread: '0.05',
+  trade_amount_usdt: '500',
+  poll_interval_orders_ms: '5000',
+  poll_interval_ads_ms: '30000',
+  poll_interval_prices_ms: '60000',
+  auto_cancel_timeout_ms: '900000',
+  active_sides: 'both',
+  bot_state: 'running',
+  volatility_threshold_percent: '2',
+  volatility_window_minutes: '5',
+} as const;
+
+export type ConfigKey = keyof typeof DEFAULT_CONFIG;
+
+log.info('config loaded');
