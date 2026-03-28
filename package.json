@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:banks": "tsx src/scripts/seed-banks.ts"
   },
   "dependencies": {
     "bybit-api": "^4.6.1",

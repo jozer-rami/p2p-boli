@@ -5,6 +5,14 @@ import { createModuleLogger } from '../utils/logger.js';
 
 const log = createModuleLogger('db');
 
+// ALTER TABLE statements that add columns introduced after initial schema creation.
+// Each entry is idempotent: SQLite will throw if the column already exists, so we
+// catch and ignore those errors.
+const COLUMN_MIGRATIONS = [
+  "ALTER TABLE bank_accounts ADD COLUMN qr_code_path TEXT",
+  "ALTER TABLE bank_accounts ADD COLUMN payment_message TEXT",
+];
+
 export const TABLE_DEFINITIONS = `
 CREATE TABLE IF NOT EXISTS config (
   key TEXT PRIMARY KEY,
@@ -87,6 +95,14 @@ export function createDB(dbPath: string): DB {
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
   sqlite.exec(TABLE_DEFINITIONS);
+  // Apply any column additions that weren't in the original schema
+  for (const migration of COLUMN_MIGRATIONS) {
+    try {
+      sqlite.exec(migration);
+    } catch {
+      // Column already exists — safe to ignore
+    }
+  }
   log.info('Database tables created/verified');
   return drizzle(sqlite, { schema });
 }
