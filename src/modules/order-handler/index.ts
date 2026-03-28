@@ -17,18 +17,28 @@ const MODULE = 'OrderHandler';
  *  '10' = new
  *  '20' = awaiting_payment
  *  '30' = payment_marked
- *  '40' = released
- *  '50' = cancelled
+ *  '40' = released (crypto released to buyer)
+ *  '50' = completed/closed (terminal — could be release or cancel, check context)
  *  '60' = disputed
+ *
+ * NOTE: Bybit uses status 50 for BOTH completed releases AND cancellations.
+ * When an order disappears from pending with status 50, we check if we were
+ * the seller and funds left our balance to determine if it was a release.
+ * For safety, we treat 50 as 'released' since cancelled orders typically
+ * return funds to the seller (no USDT loss).
  */
 const BYBIT_STATUS_MAP: Record<string, OrderStatus> = {
   '10': 'new',
   '20': 'awaiting_payment',
   '30': 'payment_marked',
   '40': 'released',
-  '50': 'cancelled',
+  '50': 'released',
   '60': 'disputed',
 };
+
+function mapBybitStatus(raw: string | number): OrderStatus | undefined {
+  return BYBIT_STATUS_MAP[String(raw)];
+}
 
 const TERMINAL_STATUSES: OrderStatus[] = ['released', 'cancelled'];
 const PENDING_BYBIT_STATUSES = ['10', '20', '30', '60'];
@@ -78,7 +88,7 @@ export class OrderHandler {
       const bybitOrders = await this.bybit.getPendingOrders();
 
       for (const order of bybitOrders) {
-        const status = BYBIT_STATUS_MAP[order.status];
+        const status = mapBybitStatus(order.status);
         if (!status) {
           log.warn({ orderId: order.id, bybitStatus: order.status }, 'Unknown Bybit status — skipping');
           continue;
@@ -130,7 +140,7 @@ export class OrderHandler {
       const seenIds = new Set<string>();
 
       for (const order of bybitOrders) {
-        const newStatus = BYBIT_STATUS_MAP[order.status];
+        const newStatus = mapBybitStatus(order.status);
         if (!newStatus) {
           log.warn({ orderId: order.id, bybitStatus: order.status }, 'Unknown Bybit status in poll');
           continue;
@@ -200,7 +210,7 @@ export class OrderHandler {
         // Order is no longer in the pending list — fetch its final status
         try {
           const detail = await this.bybit.getOrderDetail(orderId);
-          const finalStatus = BYBIT_STATUS_MAP[detail.status];
+          const finalStatus = mapBybitStatus(detail.status);
 
           if (!finalStatus) {
             log.warn({ orderId, bybitStatus: detail.status }, 'Unknown final Bybit status');

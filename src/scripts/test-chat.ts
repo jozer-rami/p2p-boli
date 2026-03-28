@@ -10,38 +10,44 @@ const client = new RestClientV5({
 const ORDER_ID = '2038023696851128320';
 
 async function main() {
-  // Try different param combos
-  const paramSets = [
-    { orderId: ORDER_ID, page: '1', size: '50' },
-    { orderId: ORDER_ID, page: 1, size: 50 },
-    { orderId: ORDER_ID, pageNo: '1', pageSize: '50' },
-  ];
+  // 1. Check pending orders
+  console.log('=== Pending Orders ===');
+  const pending = await client.getP2PPendingOrders({ page: '1', size: '50' } as any);
+  const pendingItems = (pending as any).result?.items ?? [];
+  console.log(`Pending: ${pendingItems.length}`);
 
-  for (const params of paramSets) {
-    console.log(`\n--- getOrderMessages(${JSON.stringify(params)}) ---`);
-    const res = await client.getP2POrderMessages(params as any);
-    const r = res as any;
-    const messages = r.result?.result ?? r.result?.items ?? r.result?.messages ?? [];
-    console.log(`ret_code: ${r.ret_code}, totalRows: ${r.result?.totalRows}, messages: ${messages.length}`);
+  // 2. Check completed orders
+  console.log('\n=== Recent Orders ===');
+  const orders = await client.getP2POrders({ page: '1', size: '10' } as any);
+  const orderItems = (orders as any).result?.items ?? [];
+  console.log(`Total orders: ${orderItems.length}`);
+  for (const o of orderItems) {
+    const side = o.side === 1 ? 'SELL' : 'BUY';
+    const statusMap: Record<number, string> = {
+      10: 'NEW', 20: 'AWAITING_PAYMENT', 30: 'PAYMENT_MARKED',
+      40: 'RELEASED', 50: 'CANCELLED', 60: 'DISPUTED',
+    };
+    const status = statusMap[o.status] || `STATUS_${o.status}`;
+    console.log(`  #${o.id} | ${side} | ${o.notifyTokenQuantity} USDT @ ${o.price} BOB | ${status} | ${o.targetNickName}`);
+  }
 
-    if (messages.length > 0) {
-      for (const msg of messages) {
-        const from = msg.userId === '139499611' ? 'YOU' : msg.nickName || msg.userId;
-        const type = msg.contentType === '1' ? 'TEXT' : msg.contentType === '2' ? 'IMAGE' : `TYPE_${msg.contentType}`;
-        console.log(`  [${from}] (${type}): ${msg.content || msg.message || '[no content]'}`);
-      }
-    }
+  // 3. Check specific order detail
+  console.log(`\n=== Order Detail: ${ORDER_ID} ===`);
+  try {
+    const detail = await (client as any).getP2POrderDetail({ orderId: ORDER_ID });
+    const r = detail as any;
+    const d = r.result || r.ret_msg;
+    console.log(JSON.stringify(d, null, 2));
+  } catch (e: any) {
+    console.log('Error:', e.message);
+  }
 
-    // Also dump first message raw if found
-    if (messages.length > 0) {
-      console.log('\nRaw first message:', JSON.stringify(messages[0], null, 2));
-    }
-
-    // If still empty but totalRows > 0, dump full result
-    if (messages.length === 0 && r.result?.totalRows > 0) {
-      console.log('Full result keys:', Object.keys(r.result));
-      console.log('Full result:', JSON.stringify(r.result, null, 2));
-    }
+  // 4. Balance check
+  console.log('\n=== Balance ===');
+  const bal = await client.getP2PAccountCoinsBalance({ accountType: 'FUND', coin: 'USDT' });
+  const b = (bal as any).result?.balance?.[0];
+  if (b) {
+    console.log(`USDT: ${b.transferBalance} available, ${b.walletBalance} total`);
   }
 }
 
