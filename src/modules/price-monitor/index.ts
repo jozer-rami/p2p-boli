@@ -23,7 +23,7 @@ export class PriceMonitor {
   private readonly bus: EventBus;
   private readonly db: DB;
   private readonly client: CriptoYaClient;
-  private readonly config: PriceMonitorConfig;
+  private config: PriceMonitorConfig;
 
   private latestPrices: PlatformPrices[] = [];
   private priceWindow: PriceSnapshot[] = [];
@@ -131,5 +131,15 @@ export class PriceMonitor {
 
   getBybitPrices(): PlatformPrices | undefined {
     return this.latestPrices.find((p) => p.platform === 'bybit');
+  }
+
+  setVolatilityThreshold(percent: number): void {
+    this.config = { ...this.config, volatilityThresholdPercent: percent };
+    log.info({ percent }, 'Volatility threshold updated');
+  }
+
+  setVolatilityWindow(minutes: number): void {
+    this.config = { ...this.config, volatilityWindowMinutes: minutes };
+    log.info({ minutes }, 'Volatility window updated');
   }
 }
