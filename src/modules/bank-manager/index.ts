@@ -30,6 +30,8 @@ export class BankManager {
       monthlyVolume: row.monthlyVolume,
       status: row.status,
       priority: row.priority,
+      qrCodePath: (row as any).qrCodePath ?? null,
+      paymentMessage: (row as any).paymentMessage ?? null,
     }));
   }
 

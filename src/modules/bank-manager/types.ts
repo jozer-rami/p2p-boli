@@ -9,6 +9,8 @@ export interface BankAccountRecord {
   monthlyVolume: number;
   status: string;
   priority: number;
+  qrCodePath: string | null;
+  paymentMessage: string | null;
 }
 
 export interface SelectionCriteria {

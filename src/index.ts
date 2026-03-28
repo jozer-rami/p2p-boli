@@ -264,6 +264,43 @@ const telegramBot = new TelegramBot(
 );
 
 // ---------------------------------------------------------------------------
+// Auto-send QR code on new sell orders
+// ---------------------------------------------------------------------------
+
+bus.on('order:new', async (payload) => {
+  if (payload.side !== 'sell') return;
+
+  // Find the bank account used for sell ads
+  const activeAds = adManager.getActiveAds();
+  const sellAd = activeAds.get('sell');
+  if (!sellAd) return;
+
+  if (!sellAd.bankAccountId) return;
+  const account = bankManager.getAccountById(sellAd.bankAccountId);
+  if (!account) return;
+
+  // Send QR code image if available
+  if (account.qrCodePath) {
+    try {
+      await bybitClient.sendOrderImage(payload.orderId, account.qrCodePath);
+      log.info({ orderId: payload.orderId, bank: account.name }, 'QR code sent to P2P chat');
+    } catch (err) {
+      log.error({ err, orderId: payload.orderId }, 'Failed to send QR code to P2P chat');
+    }
+  }
+
+  // Send payment instructions
+  const message = account.paymentMessage
+    || `Please pay ${(payload.amount * payload.price).toFixed(2)} BOB to ${account.name} (${account.bank}) ****${account.accountHint}`;
+  try {
+    await bybitClient.sendOrderMessage(payload.orderId, message);
+    log.info({ orderId: payload.orderId }, 'Payment instructions sent to P2P chat');
+  } catch (err) {
+    log.error({ err, orderId: payload.orderId }, 'Failed to send payment instructions');
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Startup
 // ---------------------------------------------------------------------------
 

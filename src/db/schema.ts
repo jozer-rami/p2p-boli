@@ -17,6 +17,8 @@ export const bankAccounts = sqliteTable('bank_accounts', {
   monthlyVolume: real('monthly_volume').notNull().default(0),
   status: text('status').notNull().default('active'),
   priority: integer('priority').notNull().default(0),
+  qrCodePath: text('qr_code_path'),
+  paymentMessage: text('payment_message'),
   updatedAt: text('updated_at').default("(datetime('now'))"),
 });
 

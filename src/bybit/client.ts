@@ -280,4 +280,86 @@ export class BybitClient {
       };
     }, RETRY_OPTIONS);
   }
+
+  // ─── Chat Methods ───
+
+  /**
+   * Send a text message in a P2P order chat.
+   */
+  async sendOrderMessage(orderId: string, message: string): Promise<void> {
+    return withRetry(async () => {
+      const res = await this.client.sendP2POrderMessage({
+        orderId,
+        contentType: '1', // 1 = text
+        content: message,
+      } as any);
+
+      if (getRetCode(res) !== 0) {
+        throw new Error(`sendOrderMessage failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
+      }
+
+      log.info({ orderId }, 'chat message sent');
+    }, RETRY_OPTIONS);
+  }
+
+  /**
+   * Upload a file (image/QR code) to a P2P order chat.
+   * Returns the uploaded file URL.
+   */
+  async uploadChatFile(orderId: string, filePath: string): Promise<string> {
+    return withRetry(async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const res = await this.client.uploadP2PChatFile({
+        orderId,
+        file: fs.createReadStream(filePath),
+      } as any);
+
+      if (getRetCode(res) !== 0) {
+        throw new Error(`uploadChatFile failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
+      }
+
+      const url = getResult(res)?.url || getResult(res)?.fileUrl || '';
+      log.info({ orderId, filePath, url }, 'chat file uploaded');
+      return url;
+    }, RETRY_OPTIONS);
+  }
+
+  /**
+   * Send an image message in a P2P order chat (upload + send as image content).
+   */
+  async sendOrderImage(orderId: string, filePath: string): Promise<void> {
+    const url = await this.uploadChatFile(orderId, filePath);
+    if (url) {
+      await this.sendOrderMessage(orderId, url);
+    }
+  }
+
+  /**
+   * Get chat messages for a P2P order.
+   */
+  async getOrderMessages(orderId: string): Promise<Array<{ content: string; contentType: string; sendTime: number; fromUserId: string }>> {
+    return withRetry(async () => {
+      const res = await this.client.getP2POrderMessages({
+        orderId,
+      } as any);
+
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getOrderMessages failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
+      }
+
+      const items = getResult(res)?.items ?? getResult(res)?.messages ?? [];
+      return items.map((msg: any) => ({
+        content: msg.content || msg.message || '',
+        contentType: String(msg.contentType || msg.type || '1'),
+        sendTime: parseInt(msg.sendTime || msg.createTime || '0'),
+        fromUserId: msg.userId || msg.fromUid || '',
+      }));
+    }, RETRY_OPTIONS);
+  }
 }

@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   monthly_volume REAL NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active',
   priority INTEGER NOT NULL DEFAULT 0,
+  qr_code_path TEXT,
+  payment_message TEXT,
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
