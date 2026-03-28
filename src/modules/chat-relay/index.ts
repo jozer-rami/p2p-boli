@@ -9,7 +9,7 @@ const log = createModuleLogger('chat-relay');
 const IMAGE_URL_PATTERN = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
 
 function isImage(content: string, contentType: string): boolean {
-  if (contentType === '2') return true;
+  if (contentType === '2' || contentType === 'pic') return true;
   return IMAGE_URL_PATTERN.test(content);
 }
 
@@ -100,6 +100,9 @@ export class ChatRelay {
         // Skip own messages
         if (msg.fromUserId === this.selfUserId) continue;
 
+        // Skip system messages
+        if ((msg as any).roleType === 'sys') continue;
+
         // Skip already-seen messages
         if (msg.sendTime <= chat.lastSeenMessageTime) continue;
 
@@ -128,7 +131,7 @@ export class ChatRelay {
             'chat:message-received',
             {
               orderId: chat.orderId,
-              from: msg.fromUserId,
+              from: (msg as any).nickName || chat.counterpartyName,
               content: msg.content,
               contentType: msg.contentType,
             },

@@ -334,7 +334,17 @@ async function start(): Promise<void> {
   // 4. Start Telegram bot
   telegramBot.start();
 
-  // 5. Start polling loops
+  // 5. Apply active_sides config (pause inactive sides)
+  const activeSides = await getConfig('active_sides');
+  if (activeSides === 'sell') {
+    adManager.setPaused('buy', true);
+    log.info('Buy side paused (active_sides=sell)');
+  } else if (activeSides === 'buy') {
+    adManager.setPaused('sell', true);
+    log.info('Sell side paused (active_sides=buy)');
+  }
+
+  // 6. Start polling loops
   orderHandler.start(pollIntervalOrdersMs);
   priceMonitor.start(pollIntervalPricesMs);
   adManager.start(pollIntervalAdsMs);

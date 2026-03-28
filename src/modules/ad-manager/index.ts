@@ -204,6 +204,7 @@ export class AdManager {
         currencyId: CURRENCY_ID,
         fiatCurrencyId: FIAT_ID,
         paymentMethodIds: PAYMENT_METHOD_IDS,
+        remark: 'Pago instantaneo por QR o transferencia bancaria. Liberacion rapida.',
       });
 
       const activeAd: ActiveAd = {

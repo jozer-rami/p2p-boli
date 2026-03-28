@@ -20,7 +20,7 @@ export const envConfig = {
     apiKey: required('BYBIT_API_KEY'),
     apiSecret: required('BYBIT_API_SECRET'),
     testnet: optional('BYBIT_TESTNET', 'true') === 'true',
-    userId: optional('BYBIT_USER_ID', ''),
+    userId: optional('BYBIT_USER_ID', '139499611'),
   },
   telegram: {
     botToken: required('TELEGRAM_BOT_TOKEN'),
@@ -43,7 +43,7 @@ export const DEFAULT_CONFIG = {
   poll_interval_ads_ms: '30000',
   poll_interval_prices_ms: '60000',
   auto_cancel_timeout_ms: '900000',
-  active_sides: 'both',
+  active_sides: 'sell',
   bot_state: 'running',
   volatility_threshold_percent: '2',
   volatility_window_minutes: '5',

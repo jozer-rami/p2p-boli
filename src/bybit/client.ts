@@ -168,7 +168,7 @@ export class BybitClient {
    */
   async getPendingOrders(): Promise<BybitOrder[]> {
     return withRetry(async () => {
-      const res = await this.client.getP2PPendingOrders({} as any);
+      const res = await this.client.getP2PPendingOrders({ page: '1', size: '50' } as any);
 
       if (getRetCode(res) !== 0) {
         throw new Error(`getPendingOrders failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
@@ -343,22 +343,28 @@ export class BybitClient {
   /**
    * Get chat messages for a P2P order.
    */
-  async getOrderMessages(orderId: string): Promise<Array<{ content: string; contentType: string; sendTime: number; fromUserId: string }>> {
+  async getOrderMessages(orderId: string): Promise<Array<{ content: string; contentType: string; sendTime: number; fromUserId: string; roleType: string; nickName: string }>> {
     return withRetry(async () => {
       const res = await this.client.getP2POrderMessages({
         orderId,
+        page: '1',
+        size: '50',
       } as any);
 
       if (getRetCode(res) !== 0) {
         throw new Error(`getOrderMessages failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
-      const items = getResult(res)?.items ?? getResult(res)?.messages ?? [];
+      // Response nests messages in result.result (array)
+      const raw = getResult(res);
+      const items = raw?.result ?? raw?.items ?? raw?.messages ?? [];
       return items.map((msg: any) => ({
         content: msg.content || msg.message || '',
-        contentType: String(msg.contentType || msg.type || '1'),
-        sendTime: parseInt(msg.sendTime || msg.createTime || '0'),
+        contentType: String(msg.contentType || 'str'),  // 'str' = text, 'pic' = image
+        sendTime: parseInt(msg.createDate || msg.sendTime || '0'),
         fromUserId: msg.userId || msg.fromUid || '',
+        roleType: msg.roleType || 'user',  // 'sys' = system, 'user' = user
+        nickName: msg.nickName || '',
       }));
     }, RETRY_OPTIONS);
   }
