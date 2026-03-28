@@ -9,6 +9,7 @@ import { BankManager } from './modules/bank-manager/index.js';
 import { AdManager } from './modules/ad-manager/index.js';
 import { OrderHandler } from './modules/order-handler/index.js';
 import { EmergencyStop } from './modules/emergency-stop/index.js';
+import { ChatRelay } from './modules/chat-relay/index.js';
 import { TelegramBot } from './modules/telegram/index.js';
 import { createModuleLogger } from './utils/logger.js';
 import { eq } from 'drizzle-orm';
@@ -264,6 +265,12 @@ const telegramBot = new TelegramBot(
 );
 
 // ---------------------------------------------------------------------------
+// Chat relay (bidirectional Bybit ↔ Telegram chat)
+// ---------------------------------------------------------------------------
+
+const chatRelay = new ChatRelay(bus, bybitClient, telegramBot, envConfig.bybit.userId);
+
+// ---------------------------------------------------------------------------
 // Auto-send QR code on new sell orders
 // ---------------------------------------------------------------------------
 
@@ -331,6 +338,7 @@ async function start(): Promise<void> {
   orderHandler.start(pollIntervalOrdersMs);
   priceMonitor.start(pollIntervalPricesMs);
   adManager.start(pollIntervalAdsMs);
+  chatRelay.start(10_000); // 10s chat polling
 
   // 6. Send startup message
   await telegramBot.sendStartupMessage({
@@ -373,6 +381,7 @@ async function shutdown(signal: string): Promise<void> {
 
   // 1. Stop polling
   stopPolling();
+  chatRelay.stop();
 
   // 2. Remove all ads
   try {
