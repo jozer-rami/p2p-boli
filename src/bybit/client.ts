@@ -15,6 +15,19 @@ const RETRY_OPTIONS = {
   },
 };
 
+/** P2P endpoints return ret_code/ret_msg (v3), not retCode/retMsg (v5) */
+function getRetCode(res: any): number {
+  return res.retCode ?? res.ret_code ?? -1;
+}
+
+function getRetMsg(res: any): string {
+  return res.retMsg ?? res.ret_msg ?? 'unknown';
+}
+
+function getResult(res: any): any {
+  return res.result ?? {};
+}
+
 export class BybitClient {
   private readonly client: RestClientV5;
 
@@ -34,12 +47,12 @@ export class BybitClient {
         side: side === 'buy' ? '1' : '0',
       });
 
-      if (res.retCode !== 0) {
-        throw new Error(`getOnlineAds failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getOnlineAds failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
-      const items = res.result?.items ?? [];
-      return items.map((ad) => ({
+      const items = getResult(res)?.items ?? [];
+      return items.map((ad: any) => ({
         id: ad.id,
         side: ad.side === '1' ? 'buy' : 'sell' as Side,
         price: parseFloat(ad.price),
@@ -56,12 +69,12 @@ export class BybitClient {
     return withRetry(async () => {
       const res = await this.client.getP2PPersonalAds({} as any);
 
-      if (res.retCode !== 0) {
-        throw new Error(`getPersonalAds failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getPersonalAds failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
-      const items = res.result?.items ?? [];
-      return items.map((ad) => ({
+      const items = getResult(res)?.items ?? [];
+      return items.map((ad: any) => ({
         id: ad.id,
         side: ad.side === 1 ? 'buy' : 'sell' as Side,
         price: parseFloat(ad.price),
@@ -93,11 +106,11 @@ export class BybitClient {
         itemType: 'ORIGIN',
       } as any);
 
-      if (res.retCode !== 0) {
-        throw new Error(`createAd failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`createAd failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
-      const adId = res.result?.itemId;
+      const adId = getResult(res)?.itemId;
       if (!adId) {
         throw new Error('createAd: no itemId in response');
       }
@@ -127,8 +140,8 @@ export class BybitClient {
         paymentPeriod: '15',
       } as any);
 
-      if (res.retCode !== 0) {
-        throw new Error(`updateAd failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`updateAd failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
       log.info({ adId, price, amount }, 'P2P ad updated');
@@ -142,8 +155,8 @@ export class BybitClient {
     return withRetry(async () => {
       const res = await this.client.cancelP2PAd({ id: adId } as any);
 
-      if (res.retCode !== 0) {
-        throw new Error(`cancelAd failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`cancelAd failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
       log.info({ adId }, 'P2P ad cancelled');
@@ -155,14 +168,14 @@ export class BybitClient {
    */
   async getPendingOrders(): Promise<BybitOrder[]> {
     return withRetry(async () => {
-      const res = await this.client.getP2PPendingOrders({ page: 1, size: 50 });
+      const res = await this.client.getP2PPendingOrders({} as any);
 
-      if (res.retCode !== 0) {
-        throw new Error(`getPendingOrders failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getPendingOrders failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
-      const items = res.result?.items ?? [];
-      return items.map((order) => ({
+      const items = getResult(res)?.items ?? [];
+      return items.map((order: any) => ({
         id: order.id,
         side: order.side === 1 ? 'buy' : 'sell' as Side,
         amount: parseFloat(order.amount),
@@ -183,11 +196,11 @@ export class BybitClient {
     return withRetry(async () => {
       const res = await this.client.getP2POrderDetail({ orderId } as any);
 
-      if (res.retCode !== 0) {
-        throw new Error(`getOrderDetail failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getOrderDetail failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
-      const order = res.result;
+      const order = getResult(res);
       if (!order) {
         throw new Error(`getOrderDetail: no result for orderId ${orderId}`);
       }
@@ -217,8 +230,8 @@ export class BybitClient {
         paymentId: '',
       } as any);
 
-      if (res.retCode !== 0) {
-        throw new Error(`markOrderAsPaid failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`markOrderAsPaid failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
       log.info({ orderId }, 'P2P order marked as paid');
@@ -232,8 +245,8 @@ export class BybitClient {
   async releaseOrder(orderId: string): Promise<void> {
     const res = await this.client.releaseP2POrder({ orderId } as any);
 
-    if (res.retCode !== 0) {
-      throw new Error(`releaseOrder failed: ${res.retMsg} (code ${res.retCode})`);
+    if (getRetCode(res) !== 0) {
+      throw new Error(`releaseOrder failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
     }
 
     log.info({ orderId }, 'P2P order released');
@@ -249,12 +262,12 @@ export class BybitClient {
         coin,
       });
 
-      if (res.retCode !== 0) {
-        throw new Error(`getBalance failed: ${res.retMsg} (code ${res.retCode})`);
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getBalance failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
-      const balances = res.result?.balance ?? [];
-      const entry = balances.find((b) => b.coin === coin);
+      const balances = getResult(res)?.balance ?? [];
+      const entry = balances.find((b: any) => b.coin === coin);
 
       if (!entry) {
         return { coin, available: 0, frozen: 0 };
