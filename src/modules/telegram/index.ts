@@ -1,4 +1,7 @@
-import { Bot, type InlineKeyboard } from 'grammy';
+import { Bot, InputFile, type InlineKeyboard } from 'grammy';
+import { mkdir } from 'fs/promises';
+import { writeFileSync } from 'fs';
+import { join } from 'path';
 import type { EventBus } from '../../event-bus.js';
 import type { DB } from '../../db/index.js';
 import { createModuleLogger } from '../../utils/logger.js';
@@ -25,6 +28,7 @@ export class TelegramBot {
   private readonly db: DB;
   private readonly chatId: string;
   private readonly bot: Bot;
+  private readonly chatReplyMap: Map<number, string> = new Map();
 
   constructor(
     bus: EventBus,
@@ -96,6 +100,36 @@ export class TelegramBot {
       log.info({ orderId }, 'Paid callback received');
       await ctx.answerCallbackQuery({ text: 'Marked as paid' });
       await ctx.editMessageText(`Order #${orderId} marked as paid.`);
+    });
+
+    // Reply-to-message detection for chat relay
+    this.bot.on('message', async (ctx) => {
+      const reply = ctx.message.reply_to_message;
+      if (!reply) return;
+
+      const orderId = this.chatReplyMap.get(reply.message_id);
+      if (!orderId) return;
+
+      if (ctx.message.text) {
+        await this.bus.emit('telegram:chat-reply', { orderId, text: ctx.message.text }, 'TelegramBot');
+        return;
+      }
+
+      if (ctx.message.photo && ctx.message.photo.length > 0) {
+        try {
+          const photo = ctx.message.photo[ctx.message.photo.length - 1];
+          const file = await ctx.api.getFile(photo.file_id);
+          const fileUrl = `https://api.telegram.org/file/bot${this.bot.token}/${file.file_path}`;
+          await mkdir('./data/tmp', { recursive: true });
+          const tempPath = join('./data/tmp', `${file.file_unique_id}.jpg`);
+          const res = await fetch(fileUrl);
+          const buf = Buffer.from(await res.arrayBuffer());
+          writeFileSync(tempPath, buf);
+          await this.bus.emit('telegram:chat-reply', { orderId, photoPath: tempPath }, 'TelegramBot');
+        } catch (err) {
+          log.error({ err, orderId }, 'Failed to process photo reply');
+        }
+      }
     });
   }
 
@@ -175,6 +209,42 @@ export class TelegramBot {
   async stop(): Promise<void> {
     log.info('Stopping Telegram bot');
     await this.bot.stop();
+  }
+
+  registerChatMessage(telegramMsgId: number, orderId: string): void {
+    this.chatReplyMap.set(telegramMsgId, orderId);
+  }
+
+  async sendChatMessage(orderId: string, counterparty: string, text: string): Promise<number> {
+    try {
+      const msg = await this.bot.api.sendMessage(
+        this.chatId,
+        `💬 Order #${orderId} (${counterparty}):\n${text}`,
+      );
+      return msg.message_id;
+    } catch (err) {
+      log.error({ err, orderId }, 'Failed to send chat message to Telegram');
+      return 0;
+    }
+  }
+
+  async sendChatPhoto(orderId: string, counterparty: string, photoUrl: string): Promise<number> {
+    try {
+      const response = await fetch(photoUrl);
+      if (!response.ok) {
+        log.error({ orderId, photoUrl, status: response.status }, 'Failed to download chat photo');
+        return this.sendChatMessage(orderId, counterparty, `[Image] ${photoUrl}`);
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const inputFile = new InputFile(buffer, 'chat-image.jpg');
+      const msg = await this.bot.api.sendPhoto(this.chatId, inputFile, {
+        caption: `📷 Order #${orderId} (${counterparty})`,
+      });
+      return msg.message_id;
+    } catch (err) {
+      log.error({ err, orderId }, 'Failed to send chat photo to Telegram');
+      return this.sendChatMessage(orderId, counterparty, `[Image] ${photoUrl}`);
+    }
   }
 
   // ---------------------------------------------------------------------------
