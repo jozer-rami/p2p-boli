@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTrades } from '../hooks/useApi';
 
 const RANGES = ['today', '7d', '30d'] as const;
@@ -6,6 +7,7 @@ const RANGE_LABELS: Record<string, string> = { today: 'Today', '7d': '7 days', '
 
 export default function TradeHistory() {
   const [range, setRange] = useState<string>('today');
+  const navigate = useNavigate();
   const { data, isLoading } = useTrades(range);
 
   const result = data as any;
@@ -67,7 +69,7 @@ export default function TradeHistory() {
           </thead>
           <tbody>
             {trades.map((t: any) => (
-              <tr key={t.id} className="border-b border-surface-muted/10 hover:bg-surface-subtle/30">
+              <tr key={t.id} onClick={() => navigate(`/order/${t.bybitOrderId}`)} className="border-b border-surface-muted/10 hover:bg-surface-subtle/30 cursor-pointer">
                 <td className="py-2 pr-3 font-num text-text-muted">{t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : '-'}</td>
                 <td className={`py-2 pr-3 text-xs font-semibold ${t.side === 'sell' ? 'text-amber-400' : 'text-blue-400'}`}>{t.side.toUpperCase()}</td>
                 <td className="py-2 pr-3 text-right font-num">{t.amountUsdt}</td>

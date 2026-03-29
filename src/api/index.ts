@@ -47,6 +47,7 @@ export function createApiServer(deps: ApiDeps) {
     bybitClient: deps.bybitClient,
     bus: deps.bus as any,
     bankManager: deps.bankManager,
+    db: deps.db,
   }));
   app.use('/api', createTradesRouter({ db: deps.db }));
   app.use('/api', createPricesRouter({ priceMonitor: deps.priceMonitor }));

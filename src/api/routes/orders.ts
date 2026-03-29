@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import { eq } from 'drizzle-orm';
+import { trades } from '../../db/schema.js';
+import type { DB } from '../../db/index.js';
 import type { OrderResponse } from '../types.js';
 import { createModuleLogger } from '../../utils/logger.js';
 
@@ -18,6 +21,7 @@ export interface OrdersDeps {
   bankManager: {
     getAccountById: (id: number) => { id: number; name: string } | undefined;
   };
+  db: DB;
 }
 
 function trackedToResponse(order: any, bankName: string): OrderResponse {
@@ -54,13 +58,40 @@ export function createOrdersRouter(deps: OrdersDeps): Router {
     res.json(orders);
   });
 
-  router.get('/orders/:id', (req, res) => {
-    const order = deps.orderHandler.getTrackedOrders().get(req.params.id);
-    if (!order) {
+  router.get('/orders/:id', async (req, res) => {
+    // Check in-memory tracked orders first
+    const tracked = deps.orderHandler.getTrackedOrders().get(req.params.id);
+    if (tracked) {
+      res.json(trackedToResponse(tracked, resolveBankName(tracked.bankAccountId)));
+      return;
+    }
+
+    // Fallback: look up completed trade in DB
+    const dbTrade = await deps.db
+      .select()
+      .from(trades)
+      .where(eq(trades.bybitOrderId, req.params.id))
+      .get();
+
+    if (!dbTrade) {
       res.status(404).json({ error: 'Order not found' });
       return;
     }
-    res.json(trackedToResponse(order, resolveBankName(order.bankAccountId)));
+
+    const response: OrderResponse = {
+      id: dbTrade.bybitOrderId,
+      side: dbTrade.side as 'buy' | 'sell',
+      amount: dbTrade.amountUsdt,
+      price: dbTrade.priceBob,
+      totalBob: dbTrade.totalBob,
+      status: dbTrade.status,
+      counterpartyId: dbTrade.counterpartyId ?? '',
+      counterpartyName: dbTrade.counterpartyName ?? '',
+      bankAccountId: dbTrade.bankAccountId ?? 0,
+      bankAccountName: resolveBankName(dbTrade.bankAccountId ?? 0),
+      createdAt: dbTrade.createdAt ? new Date(dbTrade.createdAt).getTime() : 0,
+    };
+    res.json(response);
   });
 
   router.get('/orders/:id/chat', async (req, res) => {
