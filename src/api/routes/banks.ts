@@ -59,6 +59,9 @@ export function createBanksRouter(deps: BanksDeps): Router {
           accountHint,
           balanceBob,
           dailyLimit,
+          status: 'active',
+          dailyVolume: 0,
+          monthlyVolume: 0,
           priority: priority ?? 0,
           paymentMessage: paymentMessage ?? null,
         })
