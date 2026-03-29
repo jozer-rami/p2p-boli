@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { eq } from 'drizzle-orm';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { trades } from '../../db/schema.js';
 import type { DB } from '../../db/index.js';
 import type { OrderResponse } from '../types.js';
@@ -14,6 +16,8 @@ export interface OrdersDeps {
   };
   bybitClient: {
     getOrderMessages: (orderId: string) => Promise<any[]>;
+    sendOrderMessage: (orderId: string, message: string) => Promise<void>;
+    sendOrderImage: (orderId: string, filePath: string) => Promise<void>;
   };
   bus: {
     emit: (event: string, payload: any, module: string) => Promise<void>;
@@ -101,6 +105,52 @@ export function createOrdersRouter(deps: OrdersDeps): Router {
     } catch (err) {
       log.error({ err, orderId: req.params.id }, 'Failed to fetch chat messages');
       res.status(500).json({ error: 'Failed to fetch chat messages' });
+    }
+  });
+
+  // Send text message to order chat
+  router.post('/orders/:id/chat', async (req, res) => {
+    const message = req.body?.message;
+    if (!message || typeof message !== 'string') {
+      res.status(400).json({ error: 'Message required' });
+      return;
+    }
+    try {
+      await deps.bybitClient.sendOrderMessage(req.params.id, message);
+      res.json({ success: true });
+    } catch (err) {
+      log.error({ err, orderId: req.params.id }, 'Failed to send chat message');
+      res.status(500).json({ error: 'Failed to send message' });
+    }
+  });
+
+  // Upload image to order chat
+  router.post('/orders/:id/chat/image', async (req, res) => {
+    try {
+      // Read raw body as buffer
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const buffer = Buffer.concat(chunks);
+
+      if (buffer.length === 0) {
+        res.status(400).json({ error: 'No image data' });
+        return;
+      }
+
+      // Save to temp file
+      const tmpDir = './data/tmp';
+      mkdirSync(tmpDir, { recursive: true });
+      const ext = (req.headers['content-type'] ?? '').includes('png') ? 'png' : 'jpg';
+      const tmpPath = join(tmpDir, `upload-${Date.now()}.${ext}`);
+      writeFileSync(tmpPath, buffer);
+
+      await deps.bybitClient.sendOrderImage(req.params.id, tmpPath);
+      res.json({ success: true });
+    } catch (err) {
+      log.error({ err, orderId: req.params.id }, 'Failed to upload chat image');
+      res.status(500).json({ error: 'Failed to upload image' });
     }
   });
 

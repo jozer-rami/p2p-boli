@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useOrder, useOrderChat, useStatus, useReleaseOrder, useDisputeOrder } from '../hooks/useApi';
+import { useOrder, useOrderChat, useStatus, useReleaseOrder, useDisputeOrder, useSendChatMessage, useSendChatImage } from '../hooks/useApi';
 import ChatView from '../components/ChatView';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -12,9 +12,13 @@ export default function ReleasePanel() {
   const { data: status } = useStatus();
   const release = useReleaseOrder();
   const dispute = useDisputeOrder();
+  const sendMessage = useSendChatMessage();
+  const sendImage = useSendChatImage();
   const [showConfirm, setShowConfirm] = useState(false);
   const [showDispute, setShowDispute] = useState(false);
   const [releaseError, setReleaseError] = useState<string | null>(null);
+  const [chatInput, setChatInput] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (isLoading || !order) {
     return <div className="text-text-faint">Loading order...</div>;
@@ -63,6 +67,44 @@ export default function ReleasePanel() {
               <ChatView messages={messages} myUserId={bybitUserId} />
             </div>
           )}
+          {/* Chat input */}
+          <div className="flex gap-2 mt-2 pt-2 border-t border-surface-muted/20">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && chatInput.trim()) {
+                  sendMessage.mutate({ orderId: id!, message: chatInput.trim() });
+                  setChatInput('');
+                }
+              }}
+              placeholder="Type a message..."
+              className="flex-1 bg-surface border border-surface-muted/30 px-3 py-1.5 text-sm text-text placeholder:text-text-faint outline-none focus:border-text-faint"
+              disabled={sendMessage.isPending}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  sendImage.mutate({ orderId: id!, file });
+                  e.target.value = '';
+                }
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-2 py-1.5 text-text-faint hover:text-text text-sm border border-surface-muted/30"
+              disabled={sendImage.isPending}
+              title="Send image"
+            >
+              {sendImage.isPending ? '...' : '📷'}
+            </button>
+          </div>
         </div>
 
         <div>

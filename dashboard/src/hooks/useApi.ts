@@ -53,6 +53,42 @@ export function usePrices() {
   });
 }
 
+export function useSendChatMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orderId, message }: { orderId: string; message: string }) => {
+      const res = await fetch(`/api/orders/${orderId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok) throw new Error('Failed to send message');
+      return res.json();
+    },
+    onSuccess: (_data, { orderId }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId, 'chat'] });
+    },
+  });
+}
+
+export function useSendChatImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orderId, file }: { orderId: string; file: File }) => {
+      const res = await fetch(`/api/orders/${orderId}/chat/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      if (!res.ok) throw new Error('Failed to upload image');
+      return res.json();
+    },
+    onSuccess: (_data, { orderId }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId, 'chat'] });
+    },
+  });
+}
+
 export function useReleaseOrder() {
   const queryClient = useQueryClient();
   return useMutation({
