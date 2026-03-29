@@ -52,6 +52,11 @@ function createMockDeps() {
           where: vi.fn(async () => {}),
         })),
       })),
+      insert: vi.fn(() => ({
+        values: vi.fn(() => ({
+          returning: vi.fn(async () => [{ id: 3 }]),
+        })),
+      })),
     },
   };
 }
@@ -118,5 +123,86 @@ describe('Banks API', () => {
     expect(res.body.success).toBe(true);
     expect(deps.db.update).toHaveBeenCalled();
     expect(deps.bankManager.loadAccounts).toHaveBeenCalled();
+  });
+
+  it('POST /api/banks creates a new bank account', async () => {
+    const { app, deps } = buildApp();
+    const res = await request(app)
+      .post('/api/banks')
+      .send({
+        name: 'Banco Sol',
+        bank: 'banco-sol',
+        accountHint: '1234',
+        balanceBob: 5000,
+        dailyLimit: 20000,
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.id).toBe(3);
+    expect(deps.db.insert).toHaveBeenCalled();
+    expect(deps.bankManager.loadAccounts).toHaveBeenCalled();
+  });
+
+  it('POST /api/banks returns 400 for missing required fields', async () => {
+    const { app } = buildApp();
+    const res = await request(app)
+      .post('/api/banks')
+      .send({ name: 'Incomplete' });
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /api/banks accepts optional priority and paymentMessage', async () => {
+    const { app, deps } = buildApp();
+    const res = await request(app)
+      .post('/api/banks')
+      .send({
+        name: 'Banco Sol',
+        bank: 'banco-sol',
+        accountHint: '1234',
+        balanceBob: 5000,
+        dailyLimit: 20000,
+        priority: 5,
+        paymentMessage: 'Pay here',
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(deps.db.insert).toHaveBeenCalled();
+  });
+
+  it('PATCH /api/banks/:id updates bank fields', async () => {
+    const { app, deps } = buildApp();
+    const res = await request(app)
+      .patch('/api/banks/1')
+      .send({ name: 'Banco Union Empresarial', dailyLimit: 80000 });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(deps.db.update).toHaveBeenCalled();
+    expect(deps.bankManager.loadAccounts).toHaveBeenCalled();
+  });
+
+  it('PATCH /api/banks/:id returns 404 for unknown bank', async () => {
+    const { app } = buildApp();
+    const res = await request(app)
+      .patch('/api/banks/999')
+      .send({ name: 'Updated' });
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH /api/banks/:id returns 400 for empty body', async () => {
+    const { app } = buildApp();
+    const res = await request(app)
+      .patch('/api/banks/1')
+      .send({});
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH /api/banks/:id can toggle status to inactive', async () => {
+    const { app, deps } = buildApp();
+    const res = await request(app)
+      .patch('/api/banks/1')
+      .send({ status: 'inactive' });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(deps.db.update).toHaveBeenCalled();
   });
 });
