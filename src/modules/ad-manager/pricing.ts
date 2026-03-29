@@ -1,8 +1,9 @@
 import type { PlatformPrices } from '../../event-bus.js';
 import type { PricingConfig, PricingResult } from './types.js';
 
-function round4(n: number): number {
-  return Math.round(n * 10_000) / 10_000;
+/** Round to 3 decimal places — Bybit BOB precision limit */
+function round3(n: number): number {
+  return Math.round(n * 1_000) / 1_000;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -42,8 +43,8 @@ export function calculatePricing(
   const marketSpread = ask - bid;
   const targetSpread = clamp(marketSpread, config.minSpread, config.maxSpread);
 
-  const buyPrice = round4(mid - targetSpread / 2);
-  const sellPrice = round4(mid + targetSpread / 2);
+  const buyPrice = round3(mid - targetSpread / 2);
+  const sellPrice = round3(mid + targetSpread / 2);
 
   if (buyPrice >= sellPrice) {
     return {
@@ -57,7 +58,7 @@ export function calculatePricing(
   return {
     buyPrice,
     sellPrice,
-    spread: round4(sellPrice - buyPrice),
+    spread: round3(sellPrice - buyPrice),
     paused: { buy: false, sell: false },
   };
 }

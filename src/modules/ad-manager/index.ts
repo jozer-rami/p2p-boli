@@ -32,8 +32,8 @@ export type GetBankAccount = (
 /** Bybit P2P token/fiat constants for BOB/USDT market */
 const CURRENCY_ID = 'USDT';
 const FIAT_ID = 'BOB';
-/** Payment method IDs should come from config in a real deployment; hard-coded here for MVP */
-const PAYMENT_METHOD_IDS: string[] = [];
+/** Payment method IDs loaded from Bybit at startup */
+let PAYMENT_METHOD_IDS: string[] = [];
 
 export class AdManager {
   private readonly bus: EventBus;
@@ -80,6 +80,11 @@ export class AdManager {
    */
   async syncExistingAds(): Promise<void> {
     try {
+      // Load payment methods from Bybit
+      const payments = await this.bybit.getPaymentMethods();
+      PAYMENT_METHOD_IDS = payments.map((p) => p.id);
+      log.info({ count: payments.length, ids: PAYMENT_METHOD_IDS }, 'Payment methods loaded');
+
       const bybitAds = await this.bybit.getPersonalAds();
 
       for (const ad of bybitAds) {

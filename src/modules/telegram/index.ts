@@ -69,6 +69,7 @@ export class TelegramBot {
     this.bot.command('setVolatilityWindow', handlers.setVolatilityWindow);
     this.bot.command('release', handlers.release);
     this.bot.command('cancel', handlers.cancel);
+    this.bot.command('check', handlers.check);
   }
 
   // ---------------------------------------------------------------------------

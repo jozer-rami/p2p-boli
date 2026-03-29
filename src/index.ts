@@ -258,6 +258,26 @@ const telegramBot = new TelegramBot(
       await bus.emit('order:cancelled', { orderId, reason: 'manual cancel via Telegram' }, 'main');
     },
 
+    // Manual order check — forces a fresh poll and returns tracked orders
+    checkOrders: async () => {
+      await orderHandler.poll();
+      const tracked = orderHandler.getTrackedOrders();
+      const result: Array<{ id: string; side: string; amount: number; price: number; totalBob: number; status: string; counterparty: string }> = [];
+      for (const order of tracked.values()) {
+        if (order.status === 'released' || order.status === 'cancelled') continue;
+        result.push({
+          id: order.id,
+          side: order.side,
+          amount: order.amount,
+          price: order.price,
+          totalBob: order.totalBob,
+          status: order.status,
+          counterparty: order.counterpartyName,
+        });
+      }
+      return result;
+    },
+
     // Volatility config
     setVolatilityThreshold: (percent: number) => priceMonitor.setVolatilityThreshold(percent),
     setVolatilityWindow: (minutes: number) => priceMonitor.setVolatilityWindow(minutes),

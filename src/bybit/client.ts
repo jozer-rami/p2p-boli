@@ -30,9 +30,39 @@ function getResult(res: any): any {
 
 export class BybitClient {
   private readonly client: RestClientV5;
+  private readonly apiKey: string;
+  private readonly apiSecret: string;
+  private readonly baseUrl: string;
 
   constructor(apiKey: string, apiSecret: string, testnet = false) {
     this.client = new RestClientV5({ key: apiKey, secret: apiSecret, testnet });
+    this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
+    this.baseUrl = testnet ? 'https://api-testnet.bybit.com' : 'https://api.bybit.com';
+  }
+
+  /** Raw signed POST for P2P endpoints where the SDK has pagination bugs */
+  private async rawPost(path: string, body: Record<string, any> = {}): Promise<any> {
+    const { createHmac } = await import('crypto');
+    const timestamp = String(Date.now());
+    const recvWindow = '5000';
+    const bodyStr = JSON.stringify(body);
+    const preSign = timestamp + this.apiKey + recvWindow + bodyStr;
+    const signature = createHmac('sha256', this.apiSecret).update(preSign).digest('hex');
+
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-BAPI-API-KEY': this.apiKey,
+        'X-BAPI-TIMESTAMP': timestamp,
+        'X-BAPI-SIGN': signature,
+        'X-BAPI-RECV-WINDOW': recvWindow,
+      },
+      body: bodyStr,
+    });
+
+    return res.json();
   }
 
   /**
@@ -89,21 +119,22 @@ export class BybitClient {
    */
   async createAd(params: BybitAdParams): Promise<string> {
     return withRetry(async () => {
+      const maxAmountBob = String(Math.round(params.amount * params.price * 100) / 100);
+      const minAmountBob = String(Math.min(100, Math.round(params.amount * params.price * 100) / 100));
       const res = await this.client.createP2PAd({
         tokenId: params.currencyId,
         currencyId: params.fiatCurrencyId,
-        side: params.side === 'buy' ? '1' : '0',
+        side: params.side === 'sell' ? '1' : '0',  // 1=sell, 0=buy (maker perspective)
         priceType: '0',
         premium: '0',
         price: String(params.price),
-        minAmount: '1',
-        maxAmount: String(params.amount * params.price),
+        minAmount: minAmountBob,
+        maxAmount: maxAmountBob,
         remark: params.remark ?? '',
         tradingPreferenceSet: {},
         paymentIds: params.paymentMethodIds,
         quantity: String(params.amount),
         paymentPeriod: '15',
-        itemType: 'ORIGIN',
       } as any);
 
       if (getRetCode(res) !== 0) {
@@ -168,7 +199,7 @@ export class BybitClient {
    */
   async getPendingOrders(): Promise<BybitOrder[]> {
     return withRetry(async () => {
-      const res = await this.client.getP2PPendingOrders({ page: '1', size: '50' } as any);
+      const res = await this.rawPost('/v5/p2p/order/pending/simplifyList', {});
 
       if (getRetCode(res) !== 0) {
         throw new Error(`getPendingOrders failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
@@ -281,6 +312,30 @@ export class BybitClient {
     }, RETRY_OPTIONS);
   }
 
+  /**
+   * Get user's configured payment methods (bank accounts).
+   * Returns only real payment methods (id > 0), excludes "Balance" payment.
+   */
+  async getPaymentMethods(): Promise<Array<{ id: string; bankName: string; accountNo: string; realName: string }>> {
+    return withRetry(async () => {
+      const res = await (this.client as any).getP2PUserPayments({});
+
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getPaymentMethods failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
+      }
+
+      const items = getResult(res) ?? [];
+      return items
+        .filter((p: any) => p.id > 0)
+        .map((p: any) => ({
+          id: String(p.id),
+          bankName: p.bankName || p.paymentConfigVo?.paymentName || '',
+          accountNo: p.accountNo || '',
+          realName: p.realName || '',
+        }));
+    }, RETRY_OPTIONS);
+  }
+
   // ─── Chat Methods ───
 
   /**
@@ -345,11 +400,11 @@ export class BybitClient {
    */
   async getOrderMessages(orderId: string): Promise<Array<{ content: string; contentType: string; sendTime: number; fromUserId: string; roleType: string; nickName: string }>> {
     return withRetry(async () => {
-      const res = await this.client.getP2POrderMessages({
+      const res = await this.rawPost('/v5/p2p/order/message/listpage', {
         orderId,
         page: '1',
         size: '50',
-      } as any);
+      });
 
       if (getRetCode(res) !== 0) {
         throw new Error(`getOrderMessages failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);

@@ -2,6 +2,7 @@ import type { Context } from 'grammy';
 import type { Side } from '../../event-bus.js';
 import type { BotState } from '../emergency-stop/types.js';
 import { createModuleLogger } from '../../utils/logger.js';
+import { confirmReleaseKeyboard } from './keyboards.js';
 
 const log = createModuleLogger('telegram-commands');
 
@@ -36,6 +37,9 @@ export interface CommandDeps {
   // Order actions
   releaseOrder: (orderId: string) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
+
+  // Manual order check — forces a fresh poll and returns tracked orders
+  checkOrders: () => Promise<Array<{ id: string; side: string; amount: number; price: number; totalBob: number; status: string; counterparty: string }>>;
 
   // Volatility config
   setVolatilityThreshold: (percent: number) => void;
@@ -338,6 +342,46 @@ export function registerCommands(deps: CommandDeps): Record<string, (ctx: Contex
     }
   }
 
+  async function check(ctx: Context): Promise<void> {
+    try {
+      await ctx.reply('Fetching orders from Bybit API...');
+      const orders = await deps.checkOrders();
+
+      if (orders.length === 0) {
+        await ctx.reply('No pending orders found on Bybit.');
+        return;
+      }
+
+      for (const o of orders) {
+        const statusEmoji =
+          o.status === 'payment_marked' ? '💰' :
+          o.status === 'awaiting_payment' ? '⏳' :
+          o.status === 'disputed' ? '⚠️' : '📋';
+
+        const lines = [
+          `${statusEmoji} Order #${o.id}`,
+          `Side: ${o.side.toUpperCase()}`,
+          `Amount: ${o.amount} USDT @ ${o.price} BOB`,
+          `Total: ${o.totalBob.toFixed(2)} BOB`,
+          `Status: ${o.status.toUpperCase()}`,
+          `Counterparty: ${o.counterparty}`,
+        ];
+
+        if (o.status === 'payment_marked') {
+          lines.push('', '👆 Buyer claims payment sent. Check your bank and release.');
+          await ctx.reply(lines.join('\n'), {
+            reply_markup: confirmReleaseKeyboard(o.id),
+          });
+        } else {
+          await ctx.reply(lines.join('\n'));
+        }
+      }
+    } catch (err) {
+      log.error({ err }, '/check failed');
+      await ctx.reply('Failed to check orders from Bybit API.');
+    }
+  }
+
   return {
     status,
     balance,
@@ -354,5 +398,6 @@ export function registerCommands(deps: CommandDeps): Record<string, (ctx: Contex
     setVolatilityWindow,
     release,
     cancel,
+    check,
   };
 }
