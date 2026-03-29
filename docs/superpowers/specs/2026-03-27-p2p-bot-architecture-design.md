@@ -1,7 +1,8 @@
 # P2P BOB/USDT Market-Making Bot — Architecture Design
 
-> Status: Draft
+> Status: Implemented (v0.1.0 — live testing)
 > Date: 2026-03-27
+> Updated: 2026-03-29 — See docs/PROJECT_STATUS.md for current state
 > Stack: TypeScript, bybit-api, grammY, SQLite (Drizzle ORM), pino
 
 ---

@@ -1,6 +1,6 @@
 # P2P Chat Relay System — Design Spec
 
-> Status: Draft
+> Status: Implemented
 > Date: 2026-03-28
 > Depends on: 2026-03-27-p2p-bot-architecture-design.md
 
