@@ -7,7 +7,6 @@ export interface StatusDeps {
   adManager: { getActiveAds: () => Map<string, { side: string; price: number; amountUsdt: number }> };
   priceMonitor: {
     getBybitPrices: () => { ask: number; bid: number } | undefined;
-    getLatestPrices: () => Array<{ platform: string; ask: number; bid: number }>;
   };
   bankManager: { getAccounts: () => Array<{ id: number; name: string; balanceBob: number; status: string }> };
   getTodayProfit: () => Promise<{ tradesCount: number; profitBob: number; volumeUsdt: number }>;
@@ -19,10 +18,8 @@ export function createStatusRouter(deps: StatusDeps): Router {
 
   router.get('/status', async (_req, res) => {
     const bybitPrices = deps.priceMonitor.getBybitPrices();
-    const allPrices = deps.priceMonitor.getLatestPrices();
-    const fallback = allPrices[0];
-    const ask = bybitPrices?.ask ?? fallback?.ask ?? 0;
-    const bid = bybitPrices?.bid ?? fallback?.bid ?? 0;
+    const ask = bybitPrices?.ask ?? 0;
+    const bid = bybitPrices?.bid ?? 0;
     const ads = deps.adManager.getActiveAds();
 
     const response: StatusResponse = {
