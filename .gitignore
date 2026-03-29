@@ -2,6 +2,10 @@ node_modules/
 dist/
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 .env
 .env.local
 *.log
+.superpowers/
+dashboard/dist/

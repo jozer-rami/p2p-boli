@@ -167,20 +167,31 @@ const emergencyStop = new EmergencyStop(bus, db, {
 
 async function getTodayProfit(): Promise<{ tradesCount: number; profitBob: number; volumeUsdt: number }> {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // Try daily_pnl first
   const row = await db
     .select()
     .from(schema.dailyPnl)
     .where(eq(schema.dailyPnl.date, today))
     .get();
 
-  if (!row) {
-    return { tradesCount: 0, profitBob: 0, volumeUsdt: 0 };
+  if (row) {
+    return { tradesCount: row.tradesCount, profitBob: row.profitBob, volumeUsdt: row.volumeUsdt };
   }
 
+  // Fallback: compute from trades table
+  const { gte } = await import('drizzle-orm');
+  const todayTrades = await db
+    .select()
+    .from(schema.trades)
+    .where(gte(schema.trades.createdAt, today))
+    .all();
+
+  const completed = todayTrades.filter((t) => t.status === 'completed');
   return {
-    tradesCount: row.tradesCount,
-    profitBob: row.profitBob,
-    volumeUsdt: row.volumeUsdt,
+    tradesCount: completed.length,
+    profitBob: completed.reduce((sum, t) => sum + (t.spreadCaptured ?? 0) * t.totalBob, 0),
+    volumeUsdt: completed.reduce((sum, t) => sum + t.amountUsdt, 0),
   };
 }
 

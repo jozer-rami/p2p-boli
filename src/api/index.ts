@@ -54,10 +54,12 @@ export function createApiServer(deps: ApiDeps) {
   // Serve built React dashboard in production
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const dashboardDist = join(__dirname, '../../dashboard/dist');
-  if (existsSync(dashboardDist)) {
+  const indexHtml = join(dashboardDist, 'index.html');
+  if (existsSync(dashboardDist) && existsSync(indexHtml)) {
     app.use(express.static(dashboardDist));
-    app.get('*', (_req, res) => {
-      res.sendFile(join(dashboardDist, 'index.html'));
+    // SPA fallback — only for non-API GET requests
+    app.get(/^\/(?!api).*/, (_req, res) => {
+      res.sendFile(indexHtml);
     });
     log.info({ path: dashboardDist }, 'Serving dashboard static files');
   }

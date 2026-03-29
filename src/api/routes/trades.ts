@@ -1,7 +1,7 @@
 // src/api/routes/trades.ts
 import { Router } from 'express';
-import { gte, desc } from 'drizzle-orm';
-import { trades, dailyPnl } from '../../db/schema.js';
+import { gte, desc, and, lt } from 'drizzle-orm';
+import { trades } from '../../db/schema.js';
 import type { DB } from '../../db/index.js';
 import type { TradesWithSummary } from '../types.js';
 
@@ -56,6 +56,7 @@ export function createTradesRouter(deps: TradesDeps): Router {
     const startDate = getRangeStartDate(range);
     const prevStartDate = getPreviousPeriodStartDate(range);
 
+    // Current period trades
     const tradeRows = await deps.db
       .select()
       .from(trades)
@@ -63,32 +64,25 @@ export function createTradesRouter(deps: TradesDeps): Router {
       .orderBy(desc(trades.createdAt))
       .all();
 
-    // Current period P&L
-    const pnlRows = await deps.db
-      .select()
-      .from(dailyPnl)
-      .where(gte(dailyPnl.date, startDate))
-      .all();
-
+    const completed = tradeRows.filter((t) => t.status === 'completed');
     const summary = {
-      tradesCount: pnlRows.reduce((sum, r) => sum + r.tradesCount, 0),
-      volumeUsdt: pnlRows.reduce((sum, r) => sum + r.volumeUsdt, 0),
-      profitBob: pnlRows.reduce((sum, r) => sum + r.profitBob, 0),
+      tradesCount: completed.length,
+      volumeUsdt: completed.reduce((sum, t) => sum + t.amountUsdt, 0),
+      profitBob: completed.reduce((sum, t) => sum + (t.spreadCaptured ?? 0) * t.totalBob, 0),
     };
 
-    // Previous period P&L for comparison
-    const prevPnlRows = await deps.db
+    // Previous period trades for comparison
+    const prevRows = await deps.db
       .select()
-      .from(dailyPnl)
-      .where(gte(dailyPnl.date, prevStartDate))
+      .from(trades)
+      .where(and(gte(trades.createdAt, prevStartDate), lt(trades.createdAt, startDate)))
       .all();
-    // Filter to only include rows before the current period
-    const prevOnly = prevPnlRows.filter((r) => r.date < startDate);
 
+    const prevCompleted = prevRows.filter((t) => t.status === 'completed');
     const previousPeriod = {
-      tradesCount: prevOnly.reduce((sum, r) => sum + r.tradesCount, 0),
-      volumeUsdt: prevOnly.reduce((sum, r) => sum + r.volumeUsdt, 0),
-      profitBob: prevOnly.reduce((sum, r) => sum + r.profitBob, 0),
+      tradesCount: prevCompleted.length,
+      volumeUsdt: prevCompleted.reduce((sum, t) => sum + t.amountUsdt, 0),
+      profitBob: prevCompleted.reduce((sum, t) => sum + (t.spreadCaptured ?? 0) * t.totalBob, 0),
     };
 
     const response: TradesWithSummary = {
