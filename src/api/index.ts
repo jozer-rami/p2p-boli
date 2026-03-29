@@ -9,6 +9,7 @@ import { createStatusRouter } from './routes/status.js';
 import { createOrdersRouter } from './routes/orders.js';
 import { createTradesRouter } from './routes/trades.js';
 import { createPricesRouter } from './routes/prices.js';
+import { createBanksRouter } from './routes/banks.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { EventBus } from '../event-bus.js';
 import type { DB } from '../db/index.js';
@@ -51,6 +52,7 @@ export function createApiServer(deps: ApiDeps) {
   }));
   app.use('/api', createTradesRouter({ db: deps.db }));
   app.use('/api', createPricesRouter({ priceMonitor: deps.priceMonitor }));
+  app.use('/api', createBanksRouter({ bankManager: deps.bankManager, db: deps.db }));
 
   // Serve built React dashboard in production
   const __dirname = dirname(fileURLToPath(import.meta.url));
