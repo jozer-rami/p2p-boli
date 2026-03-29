@@ -14,6 +14,14 @@ interface Props {
   myUserId: string;
 }
 
+const BYBIT_CDN = 'https://api.bybit.com';
+
+function resolveImageUrl(content: string): string | null {
+  if (content.startsWith('http')) return content;
+  if (content.startsWith('/fiat/')) return `${BYBIT_CDN}${content}`;
+  return null;
+}
+
 export default function ChatView({ messages, myUserId }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +36,7 @@ export default function ChatView({ messages, myUserId }: Props) {
         .map((m, i) => {
           const isMe = m.fromUserId === myUserId;
           const isImage = m.contentType === 'pic' || m.contentType === '2';
+          const imageUrl = isImage ? resolveImageUrl(m.content) : null;
 
           return (
             <div key={i} className={`max-w-[85%] ${isMe ? '' : 'ml-auto'}`}>
@@ -36,8 +45,10 @@ export default function ChatView({ messages, myUserId }: Props) {
                   {isMe ? 'You' : m.nickName}
                 </div>
                 {isImage ? (
-                  m.content.startsWith('http') ? (
-                    <img src={m.content} alt="chat image" className="mt-1 rounded max-w-full" />
+                  imageUrl ? (
+                    <a href={imageUrl} target="_blank" rel="noopener noreferrer">
+                      <img src={imageUrl} alt="chat image" className="mt-1 rounded max-w-full max-h-48 object-contain" />
+                    </a>
                   ) : (
                     <span className="text-text-faint italic">[Image]</span>
                   )
