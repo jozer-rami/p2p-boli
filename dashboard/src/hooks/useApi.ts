@@ -89,6 +89,53 @@ export function useSendChatImage() {
   });
 }
 
+export function useBanks() {
+  return useQuery({
+    queryKey: ['banks'],
+    queryFn: () => fetchJson<Array<{
+      id: number;
+      name: string;
+      bank: string;
+      accountHint: string;
+      balanceBob: number;
+      status: string;
+      qrCodePath: string | null;
+    }>>('/api/banks'),
+  });
+}
+
+export function useUploadQr() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bankId, file }: { bankId: number; file: File }) => {
+      const res = await fetch(`/api/banks/${bankId}/qr`, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      if (!res.ok) throw new Error('Failed to upload QR');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+    },
+  });
+}
+
+export function useDeleteQr() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (bankId: number) => {
+      const res = await fetch(`/api/banks/${bankId}/qr`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete QR');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+    },
+  });
+}
+
 export function useReleaseOrder() {
   const queryClient = useQueryClient();
   return useMutation({

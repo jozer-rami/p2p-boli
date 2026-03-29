@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { eq } from 'drizzle-orm';
-import { writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs';
-import { join } from 'path';
+import { writeFileSync, mkdirSync, unlinkSync, existsSync, readFileSync } from 'fs';
+import { join, extname } from 'path';
 import { bankAccounts } from '../../db/schema.js';
 import type { DB } from '../../db/index.js';
 import { createModuleLogger } from '../../utils/logger.js';
@@ -39,6 +39,20 @@ export function createBanksRouter(deps: BanksDeps): Router {
   router.get('/banks', (_req, res) => {
     const accounts = deps.bankManager.getAccounts();
     res.json(accounts);
+  });
+
+  // Serve QR code image for preview
+  router.get('/banks/:id/qr/preview', (req, res) => {
+    const accountId = parseInt(req.params.id, 10);
+    const account = deps.bankManager.getAccountById(accountId);
+    if (!account || !account.qrCodePath || !existsSync(account.qrCodePath)) {
+      res.status(404).json({ error: 'QR code not found' });
+      return;
+    }
+    const ext = extname(account.qrCodePath).toLowerCase();
+    const mime = ext === '.png' ? 'image/png' : 'image/jpeg';
+    res.setHeader('Content-Type', mime);
+    res.send(readFileSync(account.qrCodePath));
   });
 
   // Upload QR code image for a bank account

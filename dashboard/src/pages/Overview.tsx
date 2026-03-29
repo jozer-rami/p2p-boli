@@ -1,5 +1,6 @@
 import { useStatus, useOrders } from '../hooks/useApi';
 import OrderRow from '../components/OrderRow';
+import BankQrManager from '../components/BankQrManager';
 
 export default function Overview() {
   const { data: status, isLoading } = useStatus();
@@ -66,12 +67,7 @@ export default function Overview() {
 
         <div>
           <h2 className="text-xs uppercase text-text-faint tracking-wide mb-3">Bank Accounts</h2>
-          {s.bankAccounts.map((a: any) => (
-            <div key={a.id} className="flex justify-between py-2 border-b border-surface-muted/20 last:border-0 text-sm">
-              <span className="text-text-muted">{a.name}</span>
-              <span className="font-num">{a.balanceBob.toFixed(2)} <span className="text-text-faint text-xs">BOB</span></span>
-            </div>
-          ))}
+          <BankQrManager />
         </div>
       </div>
     </div>
