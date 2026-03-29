@@ -51,6 +51,9 @@ export const DEFAULT_CONFIG = {
   volatility_threshold_percent: '2',
   volatility_window_minutes: '5',
   reprice_enabled: 'false',
+  dry_run: 'true',
+  sleep_start_hour: '23',
+  sleep_end_hour: '10',
 } as const;
 
 export type ConfigKey = keyof typeof DEFAULT_CONFIG;

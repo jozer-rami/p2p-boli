@@ -33,12 +33,22 @@ export class BybitClient {
   private readonly apiKey: string;
   private readonly apiSecret: string;
   private readonly baseUrl: string;
+  private dryRun = false;
 
   constructor(apiKey: string, apiSecret: string, testnet = false) {
     this.client = new RestClientV5({ key: apiKey, secret: apiSecret, testnet });
     this.apiKey = apiKey;
     this.apiSecret = apiSecret;
     this.baseUrl = testnet ? 'https://api-testnet.bybit.com' : 'https://api.bybit.com';
+  }
+
+  setDryRun(enabled: boolean): void {
+    this.dryRun = enabled;
+    log.info({ dryRun: enabled }, 'Dry run mode updated');
+  }
+
+  isDryRun(): boolean {
+    return this.dryRun;
   }
 
   /** Raw signed POST for P2P endpoints where the SDK has pagination bugs */
@@ -118,6 +128,10 @@ export class BybitClient {
    * Create a new P2P advertisement.
    */
   async createAd(params: BybitAdParams): Promise<string> {
+    if (this.dryRun) {
+      log.info({ side: params.side, price: params.price, amount: params.amount }, '[DRY RUN] Would create ad');
+      return `dry-run-${Date.now()}`;
+    }
     return withRetry(async () => {
       const maxAmountBob = String(Math.round(params.amount * params.price * 100) / 100);
       const minAmountBob = String(Math.min(100, Math.round(params.amount * params.price * 100) / 100));
@@ -155,6 +169,10 @@ export class BybitClient {
    * Update (reprice) an existing P2P ad.
    */
   async updateAd(adId: string, price: number, amount: number, paymentIds?: string[]): Promise<void> {
+    if (this.dryRun) {
+      log.info({ adId: adId.slice(-8), price, amount }, '[DRY RUN] Would update ad');
+      return;
+    }
     return withRetry(async () => {
       const maxAmountBob = String(Math.round(amount * price * 100) / 100);
       const minAmountBob = String(Math.min(100, Math.round(amount * price * 100) / 100));
@@ -185,6 +203,10 @@ export class BybitClient {
    * Cancel (remove) a P2P advertisement.
    */
   async cancelAd(adId: string): Promise<void> {
+    if (this.dryRun) {
+      log.info({ adId: adId.slice(-8) }, '[DRY RUN] Would cancel ad');
+      return;
+    }
     return withRetry(async () => {
       const res = await this.client.cancelP2PAd({ id: adId } as any);
 
@@ -260,6 +282,10 @@ export class BybitClient {
    * Mark a P2P order as paid (payment sent).
    */
   async markOrderAsPaid(orderId: string): Promise<void> {
+    if (this.dryRun) {
+      log.info({ orderId }, '[DRY RUN] Would mark order as paid');
+      return;
+    }
     return withRetry(async () => {
       const res = await this.client.markP2POrderAsPaid({
         orderId,
@@ -280,6 +306,10 @@ export class BybitClient {
    * NO retry — releasing twice is dangerous.
    */
   async releaseOrder(orderId: string): Promise<void> {
+    if (this.dryRun) {
+      log.info({ orderId }, '[DRY RUN] Would release order');
+      return;
+    }
     const res = await this.client.releaseP2POrder({ orderId } as any);
 
     if (getRetCode(res) !== 0) {

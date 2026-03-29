@@ -423,13 +423,21 @@ async function start(): Promise<void> {
     lines.push(`🏦 Bank accounts: ${bankManager.getAccounts().filter(a => a.status === 'active').length} active`);
     const totalBob = bankManager.getTotalBobBalance();
     lines.push(`💵 BOB Balance: ${totalBob.toFixed(0)} (estimated)`);
+    if (bybitClient.isDryRun()) lines.push(`\n🧪 DRY RUN MODE — no real trades`);
+    const sleepStart = await getConfig('sleep_start_hour');
+    const sleepEnd = await getConfig('sleep_end_hour');
+    lines.push(`😴 Sleep: ${sleepStart}:00 - ${sleepEnd}:00 BOT`);
     await telegramBot.sendRaw(lines.join('\n'));
   } else {
-    await telegramBot.sendRaw('📊 No active ads. Bot will create one on next tick.');
+    const mode = bybitClient.isDryRun() ? ' (DRY RUN)' : '';
+    await telegramBot.sendRaw(`📊 No active ads${mode}. Bot will create one on next tick.`);
   }
 
-  // 7. Schedule daily reset at midnight
+  // 9. Schedule daily reset at midnight
   scheduleDailyReset();
+
+  // 10. Schedule sleep mode
+  scheduleSleepMode();
 
   log.info('boli-p2p-bot started successfully');
 }
@@ -437,18 +445,71 @@ async function start(): Promise<void> {
 function scheduleDailyReset(): void {
   const now = new Date();
   const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0); // Next midnight
+  midnight.setHours(24, 0, 0, 0);
   const msUntilMidnight = midnight.getTime() - now.getTime();
 
   setTimeout(async () => {
     log.info('Running daily reset...');
     await bankManager.resetDailyVolumes();
     log.info('Daily volumes reset');
-    // Reschedule for next day
     scheduleDailyReset();
   }, msUntilMidnight);
 
   log.info({ msUntilMidnight }, 'Daily reset scheduled');
+}
+
+// ---------------------------------------------------------------------------
+// Sleep mode (BOT = UTC-4)
+// ---------------------------------------------------------------------------
+
+const BOT_UTC_OFFSET = -4; // Bolivia Time
+
+function getNowBOT(): Date {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60_000;
+  return new Date(utc + BOT_UTC_OFFSET * 3600_000);
+}
+
+function isInSleepWindow(sleepStart: number, sleepEnd: number): boolean {
+  const hour = getNowBOT().getHours();
+  if (sleepStart > sleepEnd) {
+    // Wraps midnight: e.g., 23-10 means 23,0,1,...,9 are sleep
+    return hour >= sleepStart || hour < sleepEnd;
+  }
+  return hour >= sleepStart && hour < sleepEnd;
+}
+
+let isSleeping = false;
+
+async function checkSleepMode(): Promise<void> {
+  const sleepStart = parseInt(await getConfig('sleep_start_hour'));
+  const sleepEnd = parseInt(await getConfig('sleep_end_hour'));
+  const shouldSleep = isInSleepWindow(sleepStart, sleepEnd);
+  const botHour = getNowBOT().getHours();
+
+  if (shouldSleep && !isSleeping) {
+    isSleeping = true;
+    log.info({ botHour, sleepStart, sleepEnd }, 'Entering sleep mode');
+    adManager.setPaused('buy', true);
+    adManager.setPaused('sell', true);
+    await adManager.removeAllAds();
+    await telegramBot.sendRaw(`😴 Sleep mode active (${sleepStart}:00 - ${sleepEnd}:00 BOT). Ads removed.`);
+  } else if (!shouldSleep && isSleeping) {
+    isSleeping = false;
+    log.info({ botHour, sleepStart, sleepEnd }, 'Waking up from sleep mode');
+    const activeSides = await getConfig('active_sides');
+    if (activeSides === 'both' || activeSides === 'sell') adManager.setPaused('sell', false);
+    if (activeSides === 'both' || activeSides === 'buy') adManager.setPaused('buy', false);
+    await telegramBot.sendRaw(`☀️ Woke up! Trading resumed (${activeSides} mode).`);
+  }
+}
+
+function scheduleSleepMode(): void {
+  // Check every 5 minutes
+  setInterval(() => void checkSleepMode(), 5 * 60_000);
+  // Also check immediately
+  void checkSleepMode();
+  log.info('Sleep mode scheduler started (checks every 5 min)');
 }
 
 // ---------------------------------------------------------------------------
