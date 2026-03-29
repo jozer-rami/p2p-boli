@@ -50,6 +50,7 @@ export class AdManager {
   ]);
 
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private repriceEnabled = true;
 
   constructor(
     bus: EventBus,
@@ -167,7 +168,7 @@ export class AdManager {
     }
 
     if (existing) {
-      const priceChanged = Math.abs(existing.price - price) > 0.0001;
+      const priceChanged = this.repriceEnabled && Math.abs(existing.price - price) > 0.0001;
       const quantityLow = existing.amountUsdt < this.config.tradeAmountUsdt * 0.5; // refill when below 50%
       const needsUpdate = priceChanged || quantityLow;
 
@@ -299,6 +300,11 @@ export class AdManager {
   setPaused(side: Side, paused: boolean): void {
     this.pausedSides.set(side, paused);
     log.info({ side, paused }, 'Ad side pause state updated');
+  }
+
+  setRepriceEnabled(enabled: boolean): void {
+    this.repriceEnabled = enabled;
+    log.info({ repriceEnabled: enabled }, 'Reprice mode updated');
   }
 
   updateConfig(config: PricingConfig): void {

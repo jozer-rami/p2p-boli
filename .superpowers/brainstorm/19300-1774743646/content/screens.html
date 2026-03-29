@@ -1,0 +1,170 @@
+<h2>Dashboard Screens</h2>
+<p class="subtitle">Core views for your operations dashboard</p>
+
+<div class="section">
+  <h3>1. Overview (Home)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Overview — at a glance</div>
+    <div class="mockup-body" style="padding: 20px; font-family: system-ui;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px; border-left: 3px solid #22c55e;">
+          <div style="color: #94a3b8; font-size: 12px; text-transform: uppercase;">Bot Status</div>
+          <div style="color: #22c55e; font-size: 20px; font-weight: bold; margin-top: 4px;">RUNNING</div>
+        </div>
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px; border-left: 3px solid #f59e0b;">
+          <div style="color: #94a3b8; font-size: 12px; text-transform: uppercase;">Pending Orders</div>
+          <div style="color: #f5f5f5; font-size: 20px; font-weight: bold; margin-top: 4px;">1</div>
+        </div>
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px; border-left: 3px solid #3b82f6;">
+          <div style="color: #94a3b8; font-size: 12px; text-transform: uppercase;">Today's Profit</div>
+          <div style="color: #f5f5f5; font-size: 20px; font-weight: bold; margin-top: 4px;">45.20 BOB</div>
+        </div>
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px; border-left: 3px solid #8b5cf6;">
+          <div style="color: #94a3b8; font-size: 12px; text-transform: uppercase;">USDT/BOB Ask</div>
+          <div style="color: #f5f5f5; font-size: 20px; font-weight: bold; margin-top: 4px;">9.35</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px;">
+          <div style="color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">Active Orders</div>
+          <div style="background: #0f1923; border-radius: 6px; padding: 12px; border-left: 3px solid #f59e0b;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="color: #f59e0b; font-weight: bold;">SELL</span>
+                <span style="color: #94a3b8;"> #2038028...</span>
+              </div>
+              <span style="background: #f59e0b22; color: #f59e0b; padding: 2px 8px; border-radius: 4px; font-size: 12px;">PAYMENT MARKED</span>
+            </div>
+            <div style="color: #e2e8f0; margin-top: 6px;">150 USDT @ 9.346 BOB = 1,401.90 BOB</div>
+            <div style="color: #94a3b8; font-size: 13px; margin-top: 2px;">cripto.luis.bo</div>
+          </div>
+        </div>
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px;">
+          <div style="color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">Bank Accounts</div>
+          <div style="color: #94a3b8; font-size: 13px;">
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #ffffff11;">
+              <span style="color: #e2e8f0;">Banco Union</span>
+              <span>12,450 BOB</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 32px;">
+  <h3>2. Order Release Panel (the killer feature)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Release Panel — everything you need to decide</div>
+    <div class="mockup-body" style="padding: 20px; font-family: system-ui;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+        <!-- Left: Order Details -->
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px;">
+          <div style="color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">Order Details</div>
+          <div style="font-size: 13px; color: #94a3b8; line-height: 2;">
+            <div>Order: <span style="color: #e2e8f0;">#2038028775202013184</span></div>
+            <div>Side: <span style="color: #f59e0b; font-weight: bold;">SELL</span></div>
+            <div>Amount: <span style="color: #e2e8f0;">150 USDT</span></div>
+            <div>Price: <span style="color: #e2e8f0;">9.346 BOB</span></div>
+            <div>Total: <span style="color: #22c55e; font-weight: bold;">1,401.90 BOB</span></div>
+            <div>Counterparty: <span style="color: #e2e8f0;">cripto.luis.bo</span></div>
+            <div>Status: <span style="color: #f59e0b;">PAYMENT MARKED</span></div>
+            <div>Created: <span style="color: #e2e8f0;">2 min ago</span></div>
+          </div>
+        </div>
+
+        <!-- Center: Chat Messages -->
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px; display: flex; flex-direction: column;">
+          <div style="color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">P2P Chat</div>
+          <div style="flex: 1; overflow-y: auto; font-size: 13px;">
+            <div style="background: #0f1923; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; max-width: 85%;">
+              <div style="color: #3b82f6; font-size: 11px;">You</div>
+              <div style="color: #e2e8f0;">Please pay 1,401.90 BOB to Banco Union ****4521</div>
+            </div>
+            <div style="background: #1e3a2f; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; max-width: 85%; margin-left: auto;">
+              <div style="color: #22c55e; font-size: 11px;">cripto.luis.bo</div>
+              <div style="color: #e2e8f0;">Done, payment sent. Check your account.</div>
+            </div>
+            <div style="background: #1e3a2f; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; max-width: 85%; margin-left: auto;">
+              <div style="color: #22c55e; font-size: 11px;">cripto.luis.bo</div>
+              <div style="color: #94a3b8; font-style: italic;">[Payment screenshot]</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Bank Confirmation -->
+        <div style="background: #1a2332; border-radius: 8px; padding: 16px;">
+          <div style="color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">Bank Verification</div>
+          <div style="background: #0f1923; border-radius: 6px; padding: 12px; font-size: 13px; color: #94a3b8; margin-bottom: 16px;">
+            <div style="color: #64748b; font-size: 11px; text-transform: uppercase; margin-bottom: 8px;">Expected</div>
+            <div>Amount: <span style="color: #22c55e; font-weight: bold;">1,401.90 BOB</span></div>
+            <div>To: <span style="color: #e2e8f0;">Banco Union ****4521</span></div>
+          </div>
+          <div style="background: #14231a; border: 1px dashed #22c55e44; border-radius: 6px; padding: 16px; text-align: center; color: #94a3b8; font-size: 13px;">
+            Phase 2: Auto-verify via mobile automation
+            <div style="margin-top: 4px; font-size: 11px; color: #64748b;">For now: manual check</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+        <button style="background: #dc2626; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer;">Dispute</button>
+        <button style="background: #22c55e; color: #0f1923; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer;">Confirm & Release</button>
+      </div>
+      <div style="color: #64748b; font-size: 12px; text-align: right; margin-top: 8px;">Release requires confirmation dialog</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 32px;">
+  <h3>3. Trade History</h3>
+  <div class="mockup">
+    <div class="mockup-header">Trades — filterable table with daily P&L</div>
+    <div class="mockup-body" style="padding: 20px; font-family: system-ui;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; gap: 8px;">
+          <span style="background: #3b82f622; color: #3b82f6; padding: 4px 12px; border-radius: 4px; font-size: 13px;">Today</span>
+          <span style="background: #ffffff08; color: #94a3b8; padding: 4px 12px; border-radius: 4px; font-size: 13px;">7 days</span>
+          <span style="background: #ffffff08; color: #94a3b8; padding: 4px 12px; border-radius: 4px; font-size: 13px;">30 days</span>
+        </div>
+        <div style="color: #94a3b8; font-size: 13px;">3 trades | 450 USDT volume | <span style="color: #22c55e; font-weight: bold;">45.20 BOB</span> profit</div>
+      </div>
+      <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <thead>
+          <tr style="color: #64748b; text-transform: uppercase; font-size: 11px;">
+            <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid #ffffff11;">Time</th>
+            <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid #ffffff11;">Side</th>
+            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid #ffffff11;">USDT</th>
+            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid #ffffff11;">Price</th>
+            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid #ffffff11;">Total BOB</th>
+            <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid #ffffff11;">Counterparty</th>
+            <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid #ffffff11;">Status</th>
+          </tr>
+        </thead>
+        <tbody style="color: #e2e8f0;">
+          <tr>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08;">19:08</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; color: #f59e0b;">SELL</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; text-align: right;">150</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; text-align: right;">9.346</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; text-align: right;">1,401.90</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08;">cripto.luis.bo</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08;"><span style="color: #22c55e;">completed</span></td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08;">17:42</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; color: #3b82f6;">BUY</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; text-align: right;">150</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; text-align: right;">9.20</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08; text-align: right;">1,380.00</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08;">crypto_santa</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ffffff08;"><span style="color: #22c55e;">completed</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

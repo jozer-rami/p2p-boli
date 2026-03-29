@@ -364,7 +364,14 @@ async function start(): Promise<void> {
     log.info('Sell side paused (active_sides=buy)');
   }
 
-  // 6. Start polling loops
+  // 6. Apply reprice config
+  const repriceEnabled = await getConfig('reprice_enabled');
+  if (repriceEnabled === 'false') {
+    adManager.setRepriceEnabled(false);
+    log.info('Auto-repricing disabled — manual price control');
+  }
+
+  // 7. Start polling loops
   orderHandler.start(pollIntervalOrdersMs);
   priceMonitor.start(pollIntervalPricesMs);
   adManager.start(pollIntervalAdsMs);

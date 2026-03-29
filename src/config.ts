@@ -47,6 +47,7 @@ export const DEFAULT_CONFIG = {
   bot_state: 'running',
   volatility_threshold_percent: '2',
   volatility_window_minutes: '5',
+  reprice_enabled: 'false',
 } as const;
 
 export type ConfigKey = keyof typeof DEFAULT_CONFIG;

@@ -1,0 +1,84 @@
+<h2>Dashboard Architecture Approaches</h2>
+<p class="subtitle">How the dashboard connects to your existing bot</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Embedded API Server</h3>
+      <p>Add an Express/Fastify HTTP API inside the existing bot process. React frontend served as static files from the same process.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Direct access to in-memory state (tracked orders, prices, ads)</li>
+            <li>Single process to manage — no IPC or DB polling</li>
+            <li>Real-time updates via WebSocket from the EventBus</li>
+            <li>Simplest deployment</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Crash in HTTP layer could take down the bot</li>
+            <li>Adds weight to the main process</li>
+            <li>Harder to restart dashboard without restarting bot</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Separate Process, Shared SQLite</h3>
+      <p>Dashboard runs as its own Node process. Reads from the same SQLite DB (WAL mode supports concurrent readers). Bot exposes a tiny HTTP API only for actions (release, cancel).</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Dashboard crashes don't affect the bot</li>
+            <li>Can restart/redeploy independently</li>
+            <li>SQLite WAL mode already supports concurrent reads</li>
+            <li>Clean separation of concerns</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>No real-time in-memory state — must poll DB or add a small WS bridge</li>
+            <li>Two processes to manage</li>
+            <li>Action endpoints still need to reach the bot process</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid: Embedded API + Separate Frontend Dev Server</h3>
+      <p>Bot gets a lightweight API layer (Express + WebSocket). React app developed separately with Vite, proxies API calls to bot. In production, built React files served by the bot.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Best DX — Vite HMR for frontend, bot runs independently</li>
+            <li>Real-time via WebSocket from EventBus</li>
+            <li>Single deployment in production (static files served by bot)</li>
+            <li>Clean dev workflow: frontend and bot concerns separated</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Still couples API to bot process (same crash risk as A)</li>
+            <li>Slightly more setup (Vite proxy config)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

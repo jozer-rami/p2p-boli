@@ -43,12 +43,12 @@ export class BybitClient {
 
   /** Raw signed POST for P2P endpoints where the SDK has pagination bugs */
   private async rawPost(path: string, body: Record<string, any> = {}): Promise<any> {
-    const { createHmac } = await import('crypto');
+    const crypto = await import('node:crypto');
     const timestamp = String(Date.now());
     const recvWindow = '5000';
     const bodyStr = JSON.stringify(body);
     const preSign = timestamp + this.apiKey + recvWindow + bodyStr;
-    const signature = createHmac('sha256', this.apiSecret).update(preSign).digest('hex');
+    const signature = crypto.createHmac('sha256', this.apiSecret).update(preSign).digest('hex');
 
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
@@ -198,27 +198,31 @@ export class BybitClient {
 
   /**
    * Get all pending P2P orders.
+   * NOTE: /pending/simplifyList is broken (returns count but no items).
+   * We use /simplifyList (all orders) with pagination and filter client-side.
    */
   async getPendingOrders(): Promise<BybitOrder[]> {
+    const TERMINAL = [40, 50, '40', '50'];
     return withRetry(async () => {
-      const res = await this.rawPost('/v5/p2p/order/pending/simplifyList', {});
-
+      const res = await this.rawPost('/v5/p2p/order/simplifyList', { page: 1, size: 30 });
       if (getRetCode(res) !== 0) {
         throw new Error(`getPendingOrders failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
       }
 
       const items = getResult(res)?.items ?? [];
-      return items.map((order: any) => ({
-        id: order.id,
-        side: order.side === 1 ? 'buy' : 'sell' as Side,
-        amount: parseFloat(order.amount),
-        price: parseFloat(order.price),
-        totalBob: parseFloat(order.amount) * parseFloat(order.price),
-        status: String(order.status),
-        counterpartyId: order.targetUserId,
-        counterpartyName: order.targetNickName,
-        createdAt: new Date(order.createDate).getTime(),
-      }));
+      return items
+        .filter((order: any) => !TERMINAL.includes(order.status))
+        .map((order: any) => ({
+          id: order.id,
+          side: order.side === 1 || order.side === '1' ? 'sell' : 'buy' as Side,
+          amount: parseFloat(order.notifyTokenQuantity || order.amount),
+          price: parseFloat(order.price),
+          totalBob: parseFloat(order.amount),
+          status: String(order.status),
+          counterpartyId: order.targetUserId,
+          counterpartyName: order.targetNickName,
+          createdAt: parseInt(order.createDate) || Date.now(),
+        }));
     }, RETRY_OPTIONS);
   }
 
@@ -404,8 +408,8 @@ export class BybitClient {
     return withRetry(async () => {
       const res = await this.rawPost('/v5/p2p/order/message/listpage', {
         orderId,
-        page: '1',
-        size: '50',
+        page: 1,
+        size: 30,
       });
 
       if (getRetCode(res) !== 0) {
