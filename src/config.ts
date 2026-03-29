@@ -47,7 +47,7 @@ export const DEFAULT_CONFIG = {
   trade_amount_usdt: '300',
   poll_interval_orders_ms: '5000',
   poll_interval_ads_ms: '30000',
-  poll_interval_prices_ms: '60000',
+  poll_interval_prices_ms: '30000',
   auto_cancel_timeout_ms: '900000',
   active_sides: 'sell',
   bot_state: 'running',
