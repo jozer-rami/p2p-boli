@@ -36,11 +36,11 @@ The API layer lives inside the bot process for direct access to in-memory state 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/status` | Bot state, pending count, active ads, current prices, bank balances |
+| GET | `/api/status` | Bot state, pending count, active ads, current prices, bank balances, bybitUserId |
 | GET | `/api/orders` | All pending orders with details |
-| GET | `/api/orders/:id` | Single order detail |
+| GET | `/api/orders/:id` | Single order detail (includes resolved bank account name) |
 | GET | `/api/orders/:id/chat` | Chat messages for an order |
-| GET | `/api/trades?range=today\|7d\|30d` | Trade history with P&L summary |
+| GET | `/api/trades?range=today\|7d\|30d` | Trade history with P&L summary + previous period comparison |
 | GET | `/api/prices` | Current USDT/BOB prices from all sources |
 | POST | `/api/orders/:id/release` | Release order (body: `{ confirm: true }`) |
 | POST | `/api/orders/:id/dispute` | Open dispute |
@@ -65,49 +65,91 @@ Forwarded events:
 
 No new event types — the API layer subscribes to existing EventBus events and forwards them.
 
+## Design Direction
+
+**Aesthetic: Utilitarian operator terminal.** No cards, no rounded rectangles, no colored borders. Data separated by whitespace and typography. Dense, text-heavy, monospaced numbers. Warm neutral palette (not blue-gray). Think Bloomberg terminal meets a well-designed CLI — not a SaaS dashboard.
+
+**Principles:**
+- No cards. Data lives directly on the background, grouped by space and type scale.
+- Monospaced font for all financial numbers (amounts, prices, totals). Proportional font for labels and text.
+- Asymmetric layout — not everything in equal-width columns.
+- Color used only to communicate: green = money received/success, yellow/amber = needs attention, red = danger/error. Never decorative.
+- High information density — this is a tool for someone who stares at it for hours.
+
 ## Screens
 
-### 1. Overview (Home)
+### Smart Home: Overview or Release Panel
 
-Top row of status cards:
-- Bot status (running/emergency) with color indicator
-- Pending order count
-- Today's profit (BOB)
+The home route (`/`) is context-aware:
+- **If a pending order exists with status `payment_marked`:** show the Release Panel directly. This is the highest-priority action.
+- **Otherwise:** show the Overview.
+
+This eliminates a navigation step for the most critical workflow.
+
+### Overview
+
+Top section — key metrics displayed as plain text, not cards:
+- Bot status (RUNNING / EMERGENCY) as a colored word
+- Pending orders count
+- Today's profit in BOB (large, prominent)
 - Current USDT/BOB ask price
 
-Below the cards:
-- **Active orders panel** (left, wider) — list of pending orders with side, amount, price, counterparty, status badge. Clicking an order navigates to the release panel.
-- **Bank accounts panel** (right, narrower) — account names with current BOB balances
+Below — two asymmetric regions:
+- **Active orders** (wider, ~65%) — list of pending orders. Each row shows side, truncated ID, amount, price, counterparty, status. Clickable to open release panel.
+- **Bank accounts** (narrower, ~35%) — account names with balances. Simple list, no decoration.
 
 Data sources: `GET /api/status` on load, WebSocket events for real-time updates.
 
-### 2. Release Panel
+### Release Panel
 
-Three-column layout for the order decision view:
+The critical decision screen. Three columns, asymmetric widths (order details narrower, chat wider, bank verification narrower).
 
-**Left column — Order Details:**
-Order ID, side, USDT amount, price, total BOB, counterparty name, status, creation time.
+**Left — Order Details:**
+Order ID (truncated), side, USDT amount, price, total BOB, counterparty name, status, time since creation. Plain text list, no card wrapper.
 
-**Center column — P2P Chat:**
-Scrollable chat view showing messages between you and the counterparty. Your messages on the left (blue), theirs on the right (green). Supports text and image messages (images shown inline if URL, placeholder text if not).
+**Center — P2P Chat:**
+Scrollable chat showing messages between user and counterparty. User messages left-aligned, counterparty right-aligned. Text and image support. This column gets the most width since chat context is critical for the release decision.
 
-**Right column — Bank Verification:**
-Shows expected payment amount and target bank account. For now this is a manual check prompt. Placeholder for Phase 2 auto-verify via mobile automation.
+**Right — Bank Verification:**
+Expected payment amount and target bank account *name* (resolved from ID, not just the numeric ID). Placeholder note for Phase 2 auto-verify.
 
-**Bottom — Action Buttons:**
-"Dispute" (red) and "Confirm & Release" (green). Release opens a confirmation dialog showing order summary before executing.
+**Bottom — Action Zone (full-width):**
+The release button is **full-width, large, and displays the amount**: "Release 1,401.90 BOB to cripto.luis.bo". It's the unmistakable primary action. Dispute is a small text link below it, not a competing button. Release opens a confirmation dialog. Keyboard shortcut: `Enter` to confirm, `Escape` to cancel.
 
-Data sources: `GET /api/orders/:id` + `GET /api/orders/:id/chat`. WebSocket for status updates while viewing.
+Data sources: `GET /api/orders/:id` + `GET /api/orders/:id/chat`. WebSocket for live status updates.
 
-### 3. Trade History
+### Trade History
 
-Time range filter tabs: Today, 7 days, 30 days.
+**Hero metric:** Today's profit displayed large and prominent, with a comparison to the previous period ("↑ 12% vs yesterday"). This is the first thing the eye hits.
 
-Summary bar: trade count, total USDT volume, total BOB profit for selected range.
+Below the hero: time range filter tabs (Today, 7 days, 30 days) with summary stats (trade count, USDT volume).
 
-Table columns: Time, Side, USDT amount, Price, Total BOB, Counterparty, Status.
+Table columns: Time, Side, USDT amount, Price, Total BOB, Spread Captured, Counterparty, Status. The spread column is the actual business metric.
 
 Data source: `GET /api/trades?range=today|7d|30d`.
+
+## Browser Notifications
+
+This directly solves the "missed notifications" problem. When `order:payment-claimed` arrives via WebSocket:
+1. Play a short audio ping
+2. Show a browser Notification: "Payment received — 1,401.90 BOB from cripto.luis.bo"
+3. Clicking the notification focuses the dashboard tab and navigates to the release panel
+
+The dashboard requests notification permission on first load.
+
+## Connection Status
+
+The nav bar includes a connection status indicator:
+- Green dot + "Connected" when WebSocket is open
+- Red dot + "Reconnecting..." when WebSocket is closed/reconnecting
+- This prevents the user from seeing stale data and thinking the bot is running when it's not
+
+## Error & Empty States
+
+- **No pending orders:** Show last completed trade details and current price. "Waiting for orders" with the current spread.
+- **Bot disconnected:** Full-width amber banner: "Dashboard disconnected from bot — data may be stale. Reconnecting..."
+- **Release failed:** Error shown inline below the release button with the exact error message and a retry option.
+- **Chat load failed:** "Could not load chat messages" with retry button. Don't block the release action.
 
 ## Tech Stack
 
@@ -117,9 +159,9 @@ Data source: `GET /api/trades?range=today|7d|30d`.
 | WebSocket | `ws` | No socket.io overhead, simple event forwarding |
 | Frontend framework | React | User preference, good ecosystem for dashboards |
 | Build tool | Vite | Fast HMR in dev, clean production builds |
-| Styling | Tailwind CSS | Rapid dark-theme UI development |
+| Styling | Tailwind CSS | Rapid development, custom dark palette (warm neutrals, not blue-gray) |
 | Data fetching | React Query (TanStack Query) | Caching, background refetch, stale management |
-| Real-time | Custom `useWebSocket` hook | Subscribes to WS, updates React Query cache, auto-reconnects on disconnect |
+| Real-time | Custom `useWebSocket` hook | Subscribes to WS, updates React Query cache, auto-reconnects, triggers browser notifications |
 
 ## Project Structure
 
@@ -149,7 +191,7 @@ boli/
 │   │   │   ├── ReleasePanel.tsx
 │   │   │   └── TradeHistory.tsx
 │   │   └── components/
-│   │       ├── StatusCard.tsx
+│   │       ├── ConnectionStatus.tsx
 │   │       ├── OrderRow.tsx
 │   │       ├── ChatView.tsx
 │   │       └── ConfirmDialog.tsx
@@ -165,21 +207,16 @@ In `src/index.ts`, after existing module setup:
 import { createApiServer } from './api/index.js';
 
 const apiServer = createApiServer({
-  bus,
-  db,
-  orderHandler,
-  adManager,
-  priceMonitor,
-  bankManager,
-  emergencyStop,
+  bus, db, orderHandler, adManager, priceMonitor,
+  bankManager, emergencyStop, bybitClient, getTodayProfit,
 });
 
-apiServer.listen(envConfig.dashboard?.port ?? 3000);
+apiServer.listen(envConfig.dashboard.port ?? 3000);
 ```
 
 The API port defaults to 3000, configurable via `DASHBOARD_PORT` env var.
 
-The API server receives references to existing module instances — no new dependencies, no changes to module internals. It reads state through the same public methods that Telegram commands use (e.g., `orderHandler.getTrackedOrders()`, `priceMonitor.getLatestPrices()`).
+The API server receives references to existing module instances — no new dependencies, no changes to module internals. It reads state through the same public methods that Telegram commands use.
 
 ## What This Does NOT Include
 

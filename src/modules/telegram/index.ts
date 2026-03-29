@@ -147,6 +147,10 @@ export class TelegramBot {
       void this.send(`🔄 Ad repriced (${payload.side.toUpperCase()}): ${payload.oldPrice} → ${payload.newPrice} BOB/USDT`);
     });
 
+    this.bus.on('ad:resumed', (payload) => {
+      void this.send(`▶️ Trading resumed (${payload.side.toUpperCase()}) — market spread recovered`);
+    });
+
     this.bus.on('order:new', (payload) => {
       const text = formatOrderNew(payload);
       const keyboard = payload.side === 'sell'

@@ -51,6 +51,7 @@ export class AdManager {
 
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private repriceEnabled = true;
+  private waitingForSpread = false;
 
   constructor(
     bus: EventBus,
@@ -125,6 +126,31 @@ export class AdManager {
       return;
     }
 
+    // Check live Bybit order book spread before pricing
+    try {
+      const marketSpread = await this.checkBybitMarketSpread();
+      if (marketSpread !== null && marketSpread < this.config.minSpread) {
+        if (!this.waitingForSpread) {
+          this.waitingForSpread = true;
+          const reason = `Market spread too thin (${marketSpread.toFixed(4)} BOB < min ${this.config.minSpread})`;
+          log.info({ marketSpread, minSpread: this.config.minSpread }, reason);
+          await this.bus.emit('ad:paused', { side: 'buy' as Side, reason }, MODULE);
+          await this.bus.emit('ad:paused', { side: 'sell' as Side, reason }, MODULE);
+          // Remove existing ads to avoid being at wrong price
+          await this.removeAllAds();
+        }
+        return;
+      }
+      if (this.waitingForSpread && marketSpread !== null) {
+        this.waitingForSpread = false;
+        log.info({ marketSpread }, 'Market spread recovered — resuming');
+        await this.bus.emit('ad:resumed', { side: 'buy' as Side }, MODULE);
+        await this.bus.emit('ad:resumed', { side: 'sell' as Side }, MODULE);
+      }
+    } catch (err) {
+      log.warn({ err }, 'Failed to check market spread — proceeding with CriptoYa data');
+    }
+
     const pricing = calculatePricing(this.latestPrices, this.config);
 
     const sides: Side[] = ['buy', 'sell'];
@@ -150,6 +176,30 @@ export class AdManager {
 
       await this.manageSide(side, price, shouldPause);
     }
+  }
+
+  /**
+   * Check the live Bybit P2P order book spread.
+   * Returns the spread in BOB, or null if data unavailable.
+   */
+  private async checkBybitMarketSpread(): Promise<number | null> {
+    const [sellAds, buyAds] = await Promise.all([
+      this.bybit.getOnlineAds('sell', 'USDT', 'BOB'),
+      this.bybit.getOnlineAds('buy', 'USDT', 'BOB'),
+    ]);
+
+    // Filter out outlier prices (e.g., the 6.850 ad)
+    const validSellAds = sellAds.filter(a => a.price > 8 && a.price < 12);
+    const validBuyAds = buyAds.filter(a => a.price > 8 && a.price < 12);
+
+    if (validSellAds.length === 0 || validBuyAds.length === 0) return null;
+
+    const bestAsk = Math.min(...validSellAds.map(a => a.price));  // cheapest seller
+    const bestBid = Math.max(...validBuyAds.map(a => a.price));   // highest buyer
+
+    const spread = bestAsk - bestBid;
+    log.debug({ bestAsk, bestBid, spread: spread.toFixed(4) }, 'Bybit market spread');
+    return spread;
   }
 
   // ---------------------------------------------------------------------------
