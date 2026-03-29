@@ -100,7 +100,7 @@ const bankManager = new BankManager(db, bus);
 const priceMonitor = new PriceMonitor(bus, db, criptoYaClient, {
   volatilityThresholdPercent,
   volatilityWindowMinutes,
-});
+}, bybitClient);
 
 const adManager = new AdManager(
   bus,

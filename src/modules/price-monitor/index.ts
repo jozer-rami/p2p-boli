@@ -2,6 +2,7 @@ import { createModuleLogger } from '../../utils/logger.js';
 import type { EventBus, PlatformPrices } from '../../event-bus.js';
 import type { DB } from '../../db/index.js';
 import type { CriptoYaClient } from './criptoya.js';
+import type { BybitClient } from '../../bybit/client.js';
 import type { PriceSnapshot } from './types.js';
 
 const log = createModuleLogger('price-monitor');
@@ -23,9 +24,11 @@ export class PriceMonitor {
   private readonly bus: EventBus;
   private readonly db: DB;
   private readonly client: CriptoYaClient;
+  private readonly bybit: BybitClient | null;
   private config: PriceMonitorConfig;
 
   private latestPrices: PlatformPrices[] = [];
+  private bybitDirect: PlatformPrices | null = null;
   private priceWindow: PriceSnapshot[] = [];
   private lastUpdateTime = 0;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -35,26 +38,79 @@ export class PriceMonitor {
     db: DB,
     client: CriptoYaClient,
     config?: Partial<PriceMonitorConfig>,
+    bybit?: BybitClient,
   ) {
     this.bus = bus;
     this.db = db;
     this.client = client;
+    this.bybit = bybit ?? null;
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /**
+   * Fetch best ask (lowest sell ad) and best bid (highest buy ad) directly from Bybit P2P API.
+   * Returns full decimal precision from the orderbook.
+   */
+  private async fetchBybitDirect(): Promise<PlatformPrices | null> {
+    if (!this.bybit) return null;
+    try {
+      const [sellAds, buyAds] = await Promise.all([
+        this.bybit.getOnlineAds('sell', 'USDT', 'BOB'),
+        this.bybit.getOnlineAds('buy', 'USDT', 'BOB'),
+      ]);
+
+      // Best ask = lowest price among sell ads (what buyers see)
+      const bestAsk = sellAds.length > 0
+        ? Math.min(...sellAds.map((a) => a.price))
+        : 0;
+      // Best bid = highest price among buy ads (what sellers see)
+      const bestBid = buyAds.length > 0
+        ? Math.max(...buyAds.map((a) => a.price))
+        : 0;
+
+      const now = Math.floor(Date.now() / 1000);
+      const entry: PlatformPrices = {
+        platform: 'bybit',
+        ask: bestAsk,
+        totalAsk: sellAds.reduce((sum, a) => sum + a.amount, 0),
+        bid: bestBid,
+        totalBid: buyAds.reduce((sum, a) => sum + a.amount, 0),
+        time: now,
+      };
+
+      log.info({ ask: bestAsk, bid: bestBid, sellAds: sellAds.length, buyAds: buyAds.length }, 'Bybit direct prices fetched');
+      return entry;
+    } catch (err) {
+      log.error({ err }, 'Failed to fetch Bybit direct prices');
+      return null;
+    }
   }
 
   async fetchOnce(): Promise<void> {
     try {
       const prices = await this.client.getUsdtBobPrices();
-      this.latestPrices = prices;
+
+      // Fetch direct Bybit prices with full precision
+      const directBybit = await this.fetchBybitDirect();
+      if (directBybit) {
+        this.bybitDirect = directBybit;
+        // Replace the CriptoYa bybit entry with our direct one
+        const filtered = prices.filter((p) => !p.platform.startsWith('bybit'));
+        filtered.unshift(directBybit);
+        this.latestPrices = filtered;
+      } else {
+        this.latestPrices = prices;
+      }
+
       const now = Date.now();
       this.lastUpdateTime = now;
 
-      await this.bus.emit('price:updated', { prices, timestamp: now }, MODULE);
-      log.info({ count: prices.length }, 'Prices updated');
+      await this.bus.emit('price:updated', { prices: this.latestPrices, timestamp: now }, MODULE);
+      log.info({ count: this.latestPrices.length }, 'Prices updated');
 
-      // Compute reference price: use bybit bid if available, otherwise first entry's bid
-      const bybitEntry = prices.find((p) => p.platform === 'bybit');
-      const refPrice = bybitEntry ? bybitEntry.bid : prices[0]?.bid;
+      // Compute reference price: use direct Bybit if available
+      const bybitEntry = this.bybitDirect ?? this.latestPrices.find((p) => p.platform.startsWith('bybit'));
+      const refPrice = bybitEntry ? bybitEntry.bid : this.latestPrices[0]?.bid;
 
       if (refPrice !== undefined) {
         await this.checkVolatility(refPrice, now);
@@ -130,7 +186,7 @@ export class PriceMonitor {
   }
 
   getBybitPrices(): PlatformPrices | undefined {
-    return this.latestPrices.find((p) => p.platform.startsWith('bybit'));
+    return this.bybitDirect ?? this.latestPrices.find((p) => p.platform.startsWith('bybit'));
   }
 
   setVolatilityThreshold(percent: number): void {
