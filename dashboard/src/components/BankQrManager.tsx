@@ -249,6 +249,7 @@ function BankRow({ bank }: { bank: BankData }) {
 
             {/* Edit fields */}
             <BankEditForm
+              key={`${bank.id}-${bank.balanceBob}-${bank.name}-${bank.status}`}
               bank={bank}
               onSave={(fields) => updateBank.mutate({ bankId: bank.id, ...fields })}
               saving={updateBank.isPending}
@@ -346,7 +347,7 @@ export default function BankQrManager() {
     <div>
       {banks && banks.length > 0 ? (
         banks.map((bank) => (
-          <BankRow key={bank.id} bank={bank as BankData} />
+          <BankRow key={bank.id} bank={bank} />
         ))
       ) : (
         <div className="text-text-faint text-sm py-2">No bank accounts configured.</div>

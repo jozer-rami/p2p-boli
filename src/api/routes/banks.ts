@@ -99,6 +99,11 @@ export function createBanksRouter(deps: BanksDeps): Router {
       return;
     }
 
+    if (updates.status !== undefined && !['active', 'inactive'].includes(updates.status)) {
+      res.status(400).json({ error: 'Invalid status. Must be "active" or "inactive"' });
+      return;
+    }
+
     try {
       await deps.db
         .update(bankAccounts)
@@ -151,10 +156,16 @@ export function createBanksRouter(deps: BanksDeps): Router {
         return;
       }
 
+      if (buffer.length > 2 * 1024 * 1024) {
+        res.status(413).json({ error: 'Image too large (max 2MB)' });
+        return;
+      }
+
       // Save file
       mkdirSync(QR_DIR, { recursive: true });
       const ext = (req.headers['content-type'] ?? '').includes('png') ? 'png' : 'jpg';
-      const filename = `${account.bank}-${account.accountHint}.${ext}`;
+      const safeName = account.bank.replace(/[^a-zA-Z0-9_-]/g, '') + '-' + account.accountHint.replace(/[^a-zA-Z0-9_-]/g, '');
+      const filename = `${safeName}.${ext}`;
       const filePath = join(QR_DIR, filename);
       writeFileSync(filePath, buffer);
 
