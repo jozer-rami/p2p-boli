@@ -1,7 +1,9 @@
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useOrders } from './hooks/useApi';
+import { ChatSidebarProvider, useChatSidebar } from './hooks/useChatSidebar';
 import ConnectionStatus from './components/ConnectionStatus';
+import ChatSidebar from './components/ChatSidebar';
 import Overview from './pages/Overview';
 import ReleasePanel from './pages/ReleasePanel';
 import TradeHistory from './pages/TradeHistory';
@@ -16,8 +18,9 @@ function SmartHome() {
   return <Overview />;
 }
 
-export default function App() {
+function AppContent() {
   const { connected } = useWebSocket();
+  const { openOrderId, closeChat } = useChatSidebar();
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `px-3 py-1.5 text-sm ${isActive ? 'text-text' : 'text-text-faint hover:text-text-muted'}`;
@@ -37,13 +40,26 @@ export default function App() {
           Dashboard disconnected from bot — data may be stale. Reconnecting...
         </div>
       )}
-      <main className="px-6 py-5">
+      <main className={`px-6 py-5 transition-all ${openOrderId ? 'mr-[360px]' : ''}`}>
         <Routes>
           <Route path="/" element={<SmartHome />} />
           <Route path="/order/:id" element={<ReleasePanel />} />
           <Route path="/trades" element={<TradeHistory />} />
         </Routes>
       </main>
+
+      {/* Chat sidebar — slides in from right */}
+      {openOrderId && (
+        <ChatSidebar orderId={openOrderId} onClose={closeChat} />
+      )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ChatSidebarProvider>
+      <AppContent />
+    </ChatSidebarProvider>
   );
 }

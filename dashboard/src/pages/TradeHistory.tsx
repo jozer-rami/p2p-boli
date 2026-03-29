@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrades } from '../hooks/useApi';
+import { useChatSidebar } from '../hooks/useChatSidebar';
 
 const RANGES = ['today', '7d', '30d'] as const;
 const RANGE_LABELS: Record<string, string> = { today: 'Today', '7d': '7 days', '30d': '30 days' };
@@ -8,6 +9,7 @@ const RANGE_LABELS: Record<string, string> = { today: 'Today', '7d': '7 days', '
 export default function TradeHistory() {
   const [range, setRange] = useState<string>('today');
   const navigate = useNavigate();
+  const { openChat } = useChatSidebar();
   const { data, isLoading } = useTrades(range);
 
   const result = data as any;
@@ -65,6 +67,7 @@ export default function TradeHistory() {
               <th className="text-right py-2 pr-3 border-b border-surface-muted/20">Spread</th>
               <th className="text-left py-2 pr-3 border-b border-surface-muted/20">Counterparty</th>
               <th className="text-left py-2 border-b border-surface-muted/20">Status</th>
+              <th className="text-left py-2 border-b border-surface-muted/20"></th>
             </tr>
           </thead>
           <tbody>
@@ -82,10 +85,18 @@ export default function TradeHistory() {
                 <td className="py-2">
                   <span className={t.status === 'completed' ? 'text-green-500' : 'text-text-faint'}>{t.status}</span>
                 </td>
+                <td className="py-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openChat(t.bybitOrderId); }}
+                    className="text-text-faint hover:text-text text-xs"
+                  >
+                    chat
+                  </button>
+                </td>
               </tr>
             ))}
             {trades.length === 0 && (
-              <tr><td colSpan={8} className="py-6 text-center text-text-faint">No trades in this period</td></tr>
+              <tr><td colSpan={9} className="py-6 text-center text-text-faint">No trades in this period</td></tr>
             )}
           </tbody>
         </table>
