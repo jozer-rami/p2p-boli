@@ -318,6 +318,15 @@ bus.on('order:new', async (payload) => {
   const account = bankManager.getAccountById(sellAd.bankAccountId);
   if (!account) return;
 
+  // Send pre-QR greeting message
+  try {
+    const preMessage = await getConfig('qr_pre_message');
+    await bybitClient.sendOrderMessage(payload.orderId, preMessage);
+    log.info({ orderId: payload.orderId }, 'Pre-QR message sent to P2P chat');
+  } catch (err) {
+    log.error({ err, orderId: payload.orderId }, 'Failed to send pre-QR message');
+  }
+
   // Send QR code image if available
   if (account.qrCodePath) {
     try {
