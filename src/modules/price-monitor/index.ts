@@ -130,7 +130,7 @@ export class PriceMonitor {
   }
 
   getBybitPrices(): PlatformPrices | undefined {
-    return this.latestPrices.find((p) => p.platform === 'bybit');
+    return this.latestPrices.find((p) => p.platform.startsWith('bybit'));
   }
 
   setVolatilityThreshold(percent: number): void {
