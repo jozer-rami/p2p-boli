@@ -1,7 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { createBanksRouter } from '../../src/api/routes/banks.js';
+
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return { ...actual, mkdirSync: vi.fn(), writeFileSync: vi.fn(), unlinkSync: vi.fn(), existsSync: vi.fn(() => true) };
+});
 
 const mockAccounts = [
   {
@@ -96,6 +101,7 @@ describe('Banks API', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.qrCodePath).toContain('banco-union-4521');
+    expect(deps.db.update).toHaveBeenCalled();
     expect(deps.bankManager.loadAccounts).toHaveBeenCalled();
   });
 
@@ -110,6 +116,7 @@ describe('Banks API', () => {
     const res = await request(app).delete('/api/banks/1/qr');
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(deps.db.update).toHaveBeenCalled();
     expect(deps.bankManager.loadAccounts).toHaveBeenCalled();
   });
 });
