@@ -370,7 +370,7 @@ async function start(): Promise<void> {
   adManager.start(pollIntervalAdsMs);
   chatRelay.start(10_000); // 10s chat polling
 
-  // 6. Send startup message
+  // 7. Send startup message with current ad info
   await telegramBot.sendStartupMessage({
     minSpread,
     maxSpread,
@@ -378,6 +378,23 @@ async function start(): Promise<void> {
     activeSides: await getConfig('active_sides'),
     testnet: envConfig.bybit.testnet,
   });
+
+  // Send current ad status
+  const activeAds = adManager.getActiveAds();
+  if (activeAds.size > 0) {
+    const lines = ['📊 Current Ads:'];
+    for (const [side, ad] of activeAds) {
+      lines.push(`  ${side.toUpperCase()}: ${ad.amountUsdt} USDT @ ${ad.price} BOB (ID: ${ad.bybitAdId.slice(-8)})`);
+    }
+    const balance = await bybitClient.getBalance('USDT');
+    lines.push(`\n💰 USDT Balance: ${balance.available} available, ${balance.frozen} frozen`);
+    lines.push(`🏦 Bank accounts: ${bankManager.getAccounts().filter(a => a.status === 'active').length} active`);
+    const totalBob = bankManager.getTotalBobBalance();
+    lines.push(`💵 BOB Balance: ${totalBob.toFixed(0)} (estimated)`);
+    await telegramBot.sendRaw(lines.join('\n'));
+  } else {
+    await telegramBot.sendRaw('📊 No active ads. Bot will create one on next tick.');
+  }
 
   // 7. Schedule daily reset at midnight
   scheduleDailyReset();

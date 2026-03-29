@@ -204,6 +204,10 @@ export class TelegramBot {
     await this.send(formatBotStopping(pendingOrders));
   }
 
+  async sendRaw(text: string): Promise<void> {
+    await this.send(text);
+  }
+
   // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
