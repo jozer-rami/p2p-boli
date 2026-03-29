@@ -32,6 +32,9 @@ export const envConfig = {
   log: {
     level: optional('LOG_LEVEL', 'info'),
   },
+  dashboard: {
+    port: parseInt(optional('DASHBOARD_PORT', '3000'), 10),
+  },
 } as const;
 
 /** Default config values seeded into the DB config table on first run */
