@@ -41,6 +41,77 @@ export function createBanksRouter(deps: BanksDeps): Router {
     res.json(accounts);
   });
 
+  // Create a new bank account
+  router.post('/banks', async (req, res) => {
+    const { name, bank, accountHint, balanceBob, dailyLimit, priority, paymentMessage } = req.body ?? {};
+
+    if (!name || !bank || !accountHint || balanceBob == null || dailyLimit == null) {
+      res.status(400).json({ error: 'Missing required fields: name, bank, accountHint, balanceBob, dailyLimit' });
+      return;
+    }
+
+    try {
+      const [inserted] = await deps.db
+        .insert(bankAccounts)
+        .values({
+          name,
+          bank,
+          accountHint,
+          balanceBob,
+          dailyLimit,
+          priority: priority ?? 0,
+          paymentMessage: paymentMessage ?? null,
+        })
+        .returning({ id: bankAccounts.id });
+
+      await deps.bankManager.loadAccounts();
+
+      log.info({ id: inserted.id, name }, 'Bank account created');
+      res.json({ success: true, id: inserted.id });
+    } catch (err) {
+      log.error({ err }, 'Failed to create bank account');
+      res.status(500).json({ error: 'Failed to create bank account' });
+    }
+  });
+
+  // Update bank account fields
+  router.patch('/banks/:id', async (req, res) => {
+    const accountId = parseInt(req.params.id, 10);
+    const account = deps.bankManager.getAccountById(accountId);
+    if (!account) {
+      res.status(404).json({ error: 'Bank account not found' });
+      return;
+    }
+
+    const allowedFields = ['name', 'bank', 'accountHint', 'balanceBob', 'dailyLimit', 'priority', 'paymentMessage', 'status'] as const;
+    const updates: Record<string, any> = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: 'No valid fields to update' });
+      return;
+    }
+
+    try {
+      await deps.db
+        .update(bankAccounts)
+        .set(updates)
+        .where(eq(bankAccounts.id, accountId));
+
+      await deps.bankManager.loadAccounts();
+
+      log.info({ accountId, updates: Object.keys(updates) }, 'Bank account updated');
+      res.json({ success: true });
+    } catch (err) {
+      log.error({ err, accountId }, 'Failed to update bank account');
+      res.status(500).json({ error: 'Failed to update bank account' });
+    }
+  });
+
   // Serve QR code image for preview
   router.get('/banks/:id/qr/preview', (req, res) => {
     const accountId = parseInt(req.params.id, 10);
