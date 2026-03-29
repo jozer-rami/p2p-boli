@@ -373,10 +373,9 @@ async function start(): Promise<void> {
   }
 
   // 7. Apply dry run mode
-  const dryRun = await getConfig('dry_run');
-  if (dryRun === 'true') {
+  if (envConfig.dryRun) {
     bybitClient.setDryRun(true);
-    log.info('🧪 DRY RUN mode — no real trades will be executed');
+    log.info({ dbPath: envConfig.db.path }, 'DRY RUN mode — separate DB, no real trades');
   }
 
   // 8. Start polling loops
@@ -423,13 +422,13 @@ async function start(): Promise<void> {
     lines.push(`🏦 Bank accounts: ${bankManager.getAccounts().filter(a => a.status === 'active').length} active`);
     const totalBob = bankManager.getTotalBobBalance();
     lines.push(`💵 BOB Balance: ${totalBob.toFixed(0)} (estimated)`);
-    if (bybitClient.isDryRun()) lines.push(`\n🧪 DRY RUN MODE — no real trades`);
+    if (envConfig.dryRun) lines.push(`\n🧪 DRY RUN MODE — no real trades`);
     const sleepStart = await getConfig('sleep_start_hour');
     const sleepEnd = await getConfig('sleep_end_hour');
     lines.push(`😴 Sleep: ${sleepStart}:00 - ${sleepEnd}:00 BOT`);
     await telegramBot.sendRaw(lines.join('\n'));
   } else {
-    const mode = bybitClient.isDryRun() ? ' (DRY RUN)' : '';
+    const mode = envConfig.dryRun ? ' (DRY RUN)' : '';
     await telegramBot.sendRaw(`📊 No active ads${mode}. Bot will create one on next tick.`);
   }
 

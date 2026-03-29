@@ -15,7 +15,11 @@ function optional(key: string, fallback: string): string {
   return process.env[key] || fallback;
 }
 
+const isDryRun = optional('DRY_RUN', 'false') === 'true';
+const defaultDbPath = isDryRun ? './data/bot-dry-run.db' : './data/bot.db';
+
 export const envConfig = {
+  dryRun: isDryRun,
   bybit: {
     apiKey: required('BYBIT_API_KEY'),
     apiSecret: required('BYBIT_API_SECRET'),
@@ -27,7 +31,7 @@ export const envConfig = {
     chatId: required('TELEGRAM_CHAT_ID'),
   },
   db: {
-    path: optional('DB_PATH', './data/bot.db'),
+    path: optional('DB_PATH', defaultDbPath),
   },
   log: {
     level: optional('LOG_LEVEL', 'info'),
@@ -51,7 +55,6 @@ export const DEFAULT_CONFIG = {
   volatility_threshold_percent: '2',
   volatility_window_minutes: '5',
   reprice_enabled: 'false',
-  dry_run: 'true',
   sleep_start_hour: '23',
   sleep_end_hour: '10',
 } as const;
