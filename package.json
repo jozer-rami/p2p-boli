@@ -9,6 +9,7 @@
     "start:dry": "DRY_RUN=true tsx src/index.ts",
     "build": "tsc",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.ts",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
