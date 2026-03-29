@@ -16,7 +16,6 @@ function optional(key: string, fallback: string): string {
 }
 
 const isDryRun = optional('DRY_RUN', 'false') === 'true';
-const defaultDbPath = isDryRun ? './data/bot-dry-run.db' : './data/bot.db';
 
 export const envConfig = {
   dryRun: isDryRun,
@@ -31,7 +30,7 @@ export const envConfig = {
     chatId: required('TELEGRAM_CHAT_ID'),
   },
   db: {
-    path: optional('DB_PATH', defaultDbPath),
+    path: isDryRun ? './data/bot-dry-run.db' : optional('DB_PATH', './data/bot.db'),
   },
   log: {
     level: optional('LOG_LEVEL', 'info'),
