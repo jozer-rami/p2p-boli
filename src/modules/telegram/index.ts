@@ -139,6 +139,14 @@ export class TelegramBot {
   // ---------------------------------------------------------------------------
 
   private setupEventListeners(): void {
+    this.bus.on('ad:created', (payload) => {
+      void this.send(`📢 Ad created (${payload.side.toUpperCase()}): ${payload.price} BOB/USDT — ${payload.bankAccount}`);
+    });
+
+    this.bus.on('ad:repriced', (payload) => {
+      void this.send(`🔄 Ad repriced (${payload.side.toUpperCase()}): ${payload.oldPrice} → ${payload.newPrice} BOB/USDT`);
+    });
+
     this.bus.on('order:new', (payload) => {
       const text = formatOrderNew(payload);
       const keyboard = payload.side === 'sell'
@@ -257,8 +265,9 @@ export class TelegramBot {
       await this.bot.api.sendMessage(this.chatId, text, {
         reply_markup: keyboard,
       });
+      log.debug({ text: text.substring(0, 50) }, 'Telegram message sent');
     } catch (err) {
-      log.error({ err }, 'Failed to send Telegram message');
+      log.error({ err, text: text.substring(0, 50) }, 'Failed to send Telegram message');
     }
   }
 }

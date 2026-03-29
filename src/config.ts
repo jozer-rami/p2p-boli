@@ -38,7 +38,7 @@ export const envConfig = {
 export const DEFAULT_CONFIG = {
   min_spread: '0.015',
   max_spread: '0.05',
-  trade_amount_usdt: '500',
+  trade_amount_usdt: '300',
   poll_interval_orders_ms: '5000',
   poll_interval_ads_ms: '30000',
   poll_interval_prices_ms: '60000',
