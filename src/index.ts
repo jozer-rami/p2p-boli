@@ -413,13 +413,9 @@ async function shutdown(signal: string): Promise<void> {
   stopPolling();
   chatRelay.stop();
 
-  // 2. Remove all ads
-  try {
-    await adManager.removeAllAds();
-    log.info('All ads removed');
-  } catch (err) {
-    log.error({ err }, 'Failed to remove all ads during shutdown');
-  }
+  // 2. Keep ads live on shutdown (single-ad account — don't waste the slot)
+  // Ads will be synced and repriced on next startup
+  log.info('Ads kept live for continuity (will sync on restart)');
 
   // 3. Send shutdown message
   try {

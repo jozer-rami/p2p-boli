@@ -106,7 +106,7 @@ export class BybitClient {
       const items = getResult(res)?.items ?? [];
       return items.map((ad: any) => ({
         id: ad.id,
-        side: ad.side === 1 ? 'buy' : 'sell' as Side,
+        side: ad.side === 1 || ad.side === '1' ? 'sell' : 'buy' as Side,  // 1=sell, 0=buy (maker perspective)
         price: parseFloat(ad.price),
         amount: parseFloat(ad.lastQuantity),
         status: String(ad.status),
@@ -154,18 +154,20 @@ export class BybitClient {
   /**
    * Update (reprice) an existing P2P ad.
    */
-  async updateAd(adId: string, price: number, amount: number): Promise<void> {
+  async updateAd(adId: string, price: number, amount: number, paymentIds?: string[]): Promise<void> {
     return withRetry(async () => {
+      const maxAmountBob = String(Math.round(amount * price * 100) / 100);
+      const minAmountBob = String(Math.min(100, Math.round(amount * price * 100) / 100));
       const res = await this.client.updateP2PAd({
         id: adId,
         priceType: '0',
         premium: '0',
         price: String(price),
-        minAmount: '1',
-        maxAmount: String(amount * price),
-        remark: '',
+        minAmount: minAmountBob,
+        maxAmount: maxAmountBob,
+        remark: 'Pago instantaneo por QR o transferencia bancaria. Liberacion rapida.',
         tradingPreferenceSet: {},
-        paymentIds: [],
+        paymentIds: paymentIds ?? [],
         actionType: 'MODIFY',
         quantity: String(amount),
         paymentPeriod: '15',

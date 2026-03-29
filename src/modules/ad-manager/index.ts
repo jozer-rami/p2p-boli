@@ -88,8 +88,9 @@ export class AdManager {
       const bybitAds = await this.bybit.getPersonalAds();
 
       for (const ad of bybitAds) {
-        // Only track active ads
-        if (ad.status !== '1' && ad.status !== 'active') continue;
+        // Only track active ads (status can be '1', 'active', '10', or 10)
+        const s = String(ad.status);
+        if (s !== '1' && s !== 'active' && s !== '10') continue;
 
         // Look up matching DB record for bank account association
         const dbRow = await this.db
@@ -166,29 +167,41 @@ export class AdManager {
     }
 
     if (existing) {
-      // Reprice only if the price has meaningfully changed (> 0.0001 BOB)
-      if (Math.abs(existing.price - price) > 0.0001) {
+      const priceChanged = Math.abs(existing.price - price) > 0.0001;
+      const quantityLow = existing.amountUsdt < this.config.tradeAmountUsdt * 0.5; // refill when below 50%
+      const needsUpdate = priceChanged || quantityLow;
+
+      if (needsUpdate) {
         try {
-          await this.bybit.updateAd(existing.bybitAdId, price, existing.amountUsdt);
+          const newAmount = quantityLow ? this.config.tradeAmountUsdt : existing.amountUsdt;
+          await this.bybit.updateAd(existing.bybitAdId, price, newAmount, PAYMENT_METHOD_IDS);
 
           const oldPrice = existing.price;
           existing.price = price;
+          existing.amountUsdt = newAmount;
 
-          // Persist updated price to DB
+          // Persist updated price/amount to DB
           await this.db
             .update(ads)
-            .set({ price, updatedAt: new Date().toISOString() })
+            .set({ price, amountUsdt: newAmount, updatedAt: new Date().toISOString() })
             .where(eq(ads.bybitAdId, existing.bybitAdId));
 
-          await this.bus.emit(
-            'ad:repriced',
-            { adId: existing.bybitAdId, side, oldPrice, newPrice: price },
-            MODULE,
-          );
+          if (priceChanged) {
+            await this.bus.emit(
+              'ad:repriced',
+              { adId: existing.bybitAdId, side, oldPrice, newPrice: price },
+              MODULE,
+            );
+          }
 
-          log.info({ side, adId: existing.bybitAdId, oldPrice, newPrice: price }, 'Ad repriced');
+          if (quantityLow) {
+            log.info({ side, adId: existing.bybitAdId, oldAmount: existing.amountUsdt, newAmount }, 'Ad quantity refilled');
+          }
+          if (priceChanged) {
+            log.info({ side, adId: existing.bybitAdId, oldPrice, newPrice: price }, 'Ad repriced');
+          }
         } catch (err) {
-          log.error({ err, side }, 'Failed to reprice ad');
+          log.error({ err, side }, 'Failed to update ad');
         }
       }
       return;
