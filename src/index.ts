@@ -90,6 +90,7 @@ const autoCancelTimeoutMs = parseInt(await getConfig('auto_cancel_timeout_ms'), 
 const pollIntervalOrdersMs = parseInt(await getConfig('poll_interval_orders_ms'), 10);
 const pollIntervalAdsMs = parseInt(await getConfig('poll_interval_ads_ms'), 10);
 const pollIntervalPricesMs = parseInt(await getConfig('poll_interval_prices_ms'), 10);
+const qrPreMessage = await getConfig('qr_pre_message');
 
 // ---------------------------------------------------------------------------
 // Modules
@@ -320,8 +321,7 @@ bus.on('order:new', async (payload) => {
 
   // Send pre-QR greeting message
   try {
-    const preMessage = await getConfig('qr_pre_message');
-    await bybitClient.sendOrderMessage(payload.orderId, preMessage);
+    await bybitClient.sendOrderMessage(payload.orderId, qrPreMessage);
     log.info({ orderId: payload.orderId }, 'Pre-QR message sent to P2P chat');
   } catch (err) {
     log.error({ err, orderId: payload.orderId }, 'Failed to send pre-QR message');
