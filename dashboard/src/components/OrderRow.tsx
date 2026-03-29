@@ -31,7 +31,7 @@ export default function OrderRow({ id, side, amount, price, totalBob, status, co
         </span>
         <span className="font-num text-sm">{amount}</span>
         <span className="text-text-faint text-xs">@</span>
-        <span className="font-num text-sm">{price}</span>
+        <span className="font-num text-sm">{price.toFixed(3)}</span>
         <span className="text-text-faint text-xs">=</span>
         <span className="font-num text-sm font-semibold">{totalBob.toFixed(2)}</span>
         <span className="text-text-faint text-xs">BOB</span>

@@ -73,7 +73,7 @@ export default function TradeHistory() {
                 <td className="py-2 pr-3 font-num text-text-muted">{t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : '-'}</td>
                 <td className={`py-2 pr-3 text-xs font-semibold ${t.side === 'sell' ? 'text-amber-400' : 'text-blue-400'}`}>{t.side.toUpperCase()}</td>
                 <td className="py-2 pr-3 text-right font-num">{t.amountUsdt}</td>
-                <td className="py-2 pr-3 text-right font-num">{t.priceBob}</td>
+                <td className="py-2 pr-3 text-right font-num">{t.priceBob.toFixed(3)}</td>
                 <td className="py-2 pr-3 text-right font-num">{t.totalBob.toFixed(2)}</td>
                 <td className="py-2 pr-3 text-right font-num text-text-muted">
                   {t.spreadCaptured != null ? `${(t.spreadCaptured * 100).toFixed(1)}%` : '-'}

@@ -43,7 +43,7 @@ export default function ReleasePanel() {
             <div className="font-num text-text-faint text-xs">#{o.id.slice(-12)}</div>
             <div className={`text-sm font-semibold ${o.side === 'sell' ? 'text-amber-400' : 'text-blue-400'}`}>{o.side.toUpperCase()}</div>
             <div><span className="font-num text-text">{o.amount}</span> USDT</div>
-            <div>@ <span className="font-num text-text">{o.price}</span> BOB</div>
+            <div>@ <span className="font-num text-text">{o.price.toFixed(3)}</span> BOB</div>
             <div className="pt-1 border-t border-surface-muted/20">
               <span className="font-num text-lg font-semibold text-text">{o.totalBob.toFixed(2)}</span>
               <span className="text-text-faint text-xs ml-1">BOB</span>
