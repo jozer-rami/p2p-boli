@@ -34,7 +34,7 @@ export interface EventMap {
 
   'order:new': { orderId: string; side: Side; amount: number; price: number; counterparty: string };
   'order:payment-claimed': { orderId: string; amount: number; bankAccount: string };
-  'order:released': { orderId: string; amount: number; profit: number };
+  'order:released': { orderId: string; side: Side; amount: number; price: number; totalBob: number; profit: number; bankAccountId: number };
   'order:cancelled': { orderId: string; reason: string };
   'order:disputed': { orderId: string; reason: string };
 

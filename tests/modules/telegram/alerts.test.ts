@@ -27,12 +27,17 @@ describe('formatOrderReleased', () => {
   it('includes order ID, amount, and profit', () => {
     const result = formatOrderReleased({
       orderId: 'ORD-042',
+      side: 'sell',
       amount: 200,
+      price: 9.345,
+      totalBob: 1869,
       profit: 14.5,
     });
 
     expect(result).toContain('ORD-042');
+    expect(result).toContain('SELL');
     expect(result).toContain('200');
+    expect(result).toContain('1869');
     expect(result).toContain('14.50');
   });
 });

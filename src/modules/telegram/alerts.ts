@@ -21,7 +21,10 @@ export interface PaymentClaimedData {
 
 export interface OrderReleasedData {
   orderId: string;
+  side: Side;
   amount: number;
+  price: number;
+  totalBob: number;
   profit: number;
 }
 
@@ -79,11 +82,18 @@ export function formatPaymentClaimed(data: PaymentClaimedData): string {
 }
 
 export function formatOrderReleased(data: OrderReleasedData): string {
-  return [
-    `Order #${data.orderId} Completed`,
-    `Amount: ${data.amount} USDT`,
-    `Profit: ${data.profit.toFixed(2)} BOB`,
-  ].join('\n');
+  const sideLabel = data.side.toUpperCase();
+  const bobFlow = data.side === 'sell' ? `+${data.totalBob.toFixed(2)}` : `-${data.totalBob.toFixed(2)}`;
+  const usdtFlow = data.side === 'sell' ? `-${data.amount}` : `+${data.amount}`;
+  const lines = [
+    `Order #${data.orderId} Completed (${sideLabel})`,
+    `${usdtFlow} USDT @ ${data.price} BOB`,
+    `${bobFlow} BOB`,
+  ];
+  if (data.profit > 0) {
+    lines.push(`Spread profit: ${data.profit.toFixed(2)} BOB`);
+  }
+  return lines.join('\n');
 }
 
 export function formatOrderCancelled(data: OrderCancelledData): string {

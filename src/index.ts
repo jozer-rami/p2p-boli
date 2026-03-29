@@ -340,6 +340,64 @@ bus.on('order:new', async (payload) => {
 });
 
 // ---------------------------------------------------------------------------
+// Auto balance update + profit tracking on order completion
+// ---------------------------------------------------------------------------
+
+bus.on('order:released', async (payload) => {
+  const { orderId, side, amount, price, totalBob, bankAccountId } = payload;
+
+  // 1. Update bank BOB balance
+  if (bankAccountId > 0) {
+    if (side === 'sell') {
+      // Sold USDT → received BOB
+      bankManager.updateBalanceAfterTrade(bankAccountId, +totalBob);
+      log.info({ orderId, bank: bankAccountId, bobDelta: +totalBob }, 'Bank balance updated (+BOB from sell)');
+    } else {
+      // Bought USDT → paid BOB
+      bankManager.updateBalanceAfterTrade(bankAccountId, -totalBob);
+      log.info({ orderId, bank: bankAccountId, bobDelta: -totalBob }, 'Bank balance updated (-BOB from buy)');
+    }
+  }
+
+  // 2. Calculate spread profit
+  const currentPrices = adManager.getCurrentPrices();
+  let spreadProfit = 0;
+  if (currentPrices && currentPrices.spread > 0) {
+    // Profit per USDT = the spread between our buy and sell price
+    spreadProfit = currentPrices.spread * amount;
+    log.info({
+      orderId,
+      side,
+      tradePrice: price,
+      buyPrice: currentPrices.buyPrice,
+      sellPrice: currentPrices.sellPrice,
+      spread: currentPrices.spread,
+      profitBob: spreadProfit.toFixed(2),
+    }, 'Spread profit calculated');
+  }
+
+  // 3. Update trade record with spread captured
+  if (spreadProfit > 0) {
+    try {
+      await db
+        .update(schema.trades)
+        .set({ spreadCaptured: spreadProfit })
+        .where(eq(schema.trades.bybitOrderId, orderId));
+    } catch (err) {
+      log.error({ err, orderId }, 'Failed to update trade spread');
+    }
+  }
+
+  // 4. Refresh USDT balance from Bybit
+  try {
+    const bal = await bybitClient.getBalance('USDT');
+    log.info({ available: bal.available, frozen: bal.frozen }, 'USDT balance refreshed');
+  } catch (err) {
+    log.error({ err }, 'Failed to refresh USDT balance');
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Startup
 // ---------------------------------------------------------------------------
 

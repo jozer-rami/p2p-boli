@@ -226,11 +226,14 @@ export class OrderHandler {
           }
 
           if (order.status === 'released') {
-            const profit = 0; // spread_captured tracked elsewhere
             await this.bus.emit('order:released', {
               orderId,
+              side: order.side,
               amount: order.amount,
-              profit,
+              price: order.price,
+              totalBob: order.totalBob,
+              profit: 0,
+              bankAccountId: order.bankAccountId,
             }, MODULE);
 
             await this.upsertTrade(order, 'completed');
@@ -321,8 +324,12 @@ export class OrderHandler {
 
     await this.bus.emit('order:released', {
       orderId,
+      side: order?.side ?? 'sell',
       amount: order?.amount ?? 0,
+      price: order?.price ?? 0,
+      totalBob: order?.totalBob ?? 0,
       profit: 0,
+      bankAccountId: order?.bankAccountId ?? 0,
     }, MODULE);
 
     if (order) {

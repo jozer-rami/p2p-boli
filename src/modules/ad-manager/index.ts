@@ -52,6 +52,8 @@ export class AdManager {
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private repriceEnabled = true;
   private waitingForSpread = false;
+  private lastBybitAsk = 0;
+  private lastBybitBid = 0;
 
   constructor(
     bus: EventBus,
@@ -151,30 +153,32 @@ export class AdManager {
       log.warn({ err }, 'Failed to check market spread — proceeding with CriptoYa data');
     }
 
-    const pricing = calculatePricing(this.latestPrices, this.config);
+    // Use Bybit order book for pricing (more accurate than CriptoYa)
+    const bybitPrices = this.getCurrentPrices();
+    let buyPrice: number;
+    let sellPrice: number;
+
+    if (bybitPrices) {
+      buyPrice = bybitPrices.buyPrice;
+      sellPrice = bybitPrices.sellPrice;
+      log.debug({ buyPrice, sellPrice, spread: bybitPrices.spread, source: 'bybit-orderbook' }, 'Pricing calculated');
+    } else {
+      // Fallback to CriptoYa
+      const pricing = calculatePricing(this.latestPrices, this.config);
+      if (pricing.paused.buy && pricing.paused.sell) {
+        log.warn({ reason: pricing.paused.reason }, 'CriptoYa fallback also paused');
+        return;
+      }
+      buyPrice = pricing.buyPrice;
+      sellPrice = pricing.sellPrice;
+      log.debug({ buyPrice, sellPrice, source: 'criptoya-fallback' }, 'Pricing calculated');
+    }
 
     const sides: Side[] = ['buy', 'sell'];
     for (const side of sides) {
-      const price = side === 'buy' ? pricing.buyPrice : pricing.sellPrice;
-      const pricingPaused = side === 'buy' ? pricing.paused.buy : pricing.paused.sell;
+      const price = side === 'buy' ? buyPrice : sellPrice;
       const manualPaused = this.pausedSides.get(side) ?? false;
-      const shouldPause = pricingPaused || manualPaused;
-
-      const reason = pricing.paused.reason;
-
-      if (pricingPaused && reason) {
-        log.warn({ side, reason }, 'Pricing pause triggered');
-        if (reason === 'spread inversion') {
-          await this.bus.emit('ad:spread-inversion', {
-            buyPrice: pricing.buyPrice,
-            sellPrice: pricing.sellPrice,
-          }, MODULE);
-        } else {
-          await this.bus.emit('ad:paused', { side, reason }, MODULE);
-        }
-      }
-
-      await this.manageSide(side, price, shouldPause);
+      await this.manageSide(side, price, manualPaused);
     }
   }
 
@@ -197,9 +201,25 @@ export class AdManager {
     const bestAsk = Math.min(...validSellAds.map(a => a.price));  // cheapest seller
     const bestBid = Math.max(...validBuyAds.map(a => a.price));   // highest buyer
 
+    this.lastBybitAsk = bestAsk;
+    this.lastBybitBid = bestBid;
+
     const spread = bestAsk - bestBid;
     log.debug({ bestAsk, bestBid, spread: spread.toFixed(4) }, 'Bybit market spread');
     return spread;
+  }
+
+  /** Get the current buy/sell prices the bot is using */
+  getCurrentPrices(): { buyPrice: number; sellPrice: number; spread: number } | null {
+    if (this.lastBybitAsk === 0 || this.lastBybitBid === 0) return null;
+    const mid = (this.lastBybitAsk + this.lastBybitBid) / 2;
+    const spread = this.lastBybitAsk - this.lastBybitBid;
+    const targetSpread = Math.max(this.config.minSpread, Math.min(this.config.maxSpread, spread));
+    return {
+      buyPrice: Math.round((mid - targetSpread / 2) * 1000) / 1000,
+      sellPrice: Math.round((mid + targetSpread / 2) * 1000) / 1000,
+      spread: targetSpread,
+    };
   }
 
   // ---------------------------------------------------------------------------
