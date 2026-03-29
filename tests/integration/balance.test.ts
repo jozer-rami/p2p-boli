@@ -17,9 +17,7 @@ describe.skipIf(!hasCredentials)('Balance API', () => {
     expect(Number.isNaN(balance.frozen)).toBe(false);
   });
 
-  it('getBalance returns zeros for non-existent coin', async () => {
-    const balance = await client.getBalance('NONEXISTENT');
-
-    expect(balance).toEqual({ coin: 'NONEXISTENT', available: 0, frozen: 0 });
+  it('getBalance throws for invalid coin', async () => {
+    await expect(client.getBalance('NONEXISTENT')).rejects.toThrow('getBalance failed');
   });
 });

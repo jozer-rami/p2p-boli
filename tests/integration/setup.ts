@@ -2,8 +2,8 @@
 import 'dotenv/config';
 import { BybitClient } from '../../src/bybit/client.js';
 
-const apiKey = process.env.BYBIT_API_KEY;
-const apiSecret = process.env.BYBIT_API_SECRET;
+const apiKey = process.env.BYBIT_TESTNET_API_KEY;
+const apiSecret = process.env.BYBIT_TESTNET_API_SECRET;
 
 export const hasCredentials = !!(apiKey && apiSecret);
 
