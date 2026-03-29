@@ -11,6 +11,7 @@ import { OrderHandler } from './modules/order-handler/index.js';
 import { EmergencyStop } from './modules/emergency-stop/index.js';
 import { ChatRelay } from './modules/chat-relay/index.js';
 import { TelegramBot } from './modules/telegram/index.js';
+import { createApiServer } from './api/index.js';
 import { createModuleLogger } from './utils/logger.js';
 import { eq } from 'drizzle-orm';
 
@@ -371,13 +372,37 @@ async function start(): Promise<void> {
     log.info('Auto-repricing disabled — manual price control');
   }
 
-  // 7. Start polling loops
+  // 7. Apply dry run mode
+  const dryRun = await getConfig('dry_run');
+  if (dryRun === 'true') {
+    bybitClient.setDryRun(true);
+    log.info('🧪 DRY RUN mode — no real trades will be executed');
+  }
+
+  // 8. Start polling loops
   orderHandler.start(pollIntervalOrdersMs);
   priceMonitor.start(pollIntervalPricesMs);
   adManager.start(pollIntervalAdsMs);
   chatRelay.start(10_000); // 10s chat polling
 
-  // 7. Send startup message with current ad info
+  // 7. Start dashboard API server
+  const apiServer = createApiServer({
+    bus,
+    db,
+    orderHandler,
+    adManager,
+    priceMonitor,
+    bankManager,
+    emergencyStop,
+    bybitClient: bybitClient,
+    getTodayProfit,
+    bybitUserId: envConfig.bybit.userId,
+  });
+  apiServer.listen(envConfig.dashboard.port, () => {
+    log.info({ port: envConfig.dashboard.port }, 'Dashboard API server started');
+  });
+
+  // 8. Send startup message with current ad info
   await telegramBot.sendStartupMessage({
     minSpread,
     maxSpread,
