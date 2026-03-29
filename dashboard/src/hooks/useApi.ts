@@ -136,6 +136,60 @@ export function useDeleteQr() {
   });
 }
 
+export function useCreateBank() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      name: string;
+      bank: string;
+      accountHint: string;
+      balanceBob: number;
+      dailyLimit: number;
+      priority?: number;
+      paymentMessage?: string;
+    }) => {
+      const res = await fetch('/api/banks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to create bank');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+    },
+  });
+}
+
+export function useUpdateBank() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bankId, ...data }: {
+      bankId: number;
+      name?: string;
+      bank?: string;
+      accountHint?: string;
+      balanceBob?: number;
+      dailyLimit?: number;
+      priority?: number;
+      paymentMessage?: string;
+      status?: string;
+    }) => {
+      const res = await fetch(`/api/banks/${bankId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to update bank');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+    },
+  });
+}
+
 export function useReleaseOrder() {
   const queryClient = useQueryClient();
   return useMutation({
