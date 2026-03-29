@@ -56,6 +56,7 @@ export const DEFAULT_CONFIG = {
   reprice_enabled: 'false',
   sleep_start_hour: '23',
   sleep_end_hour: '10',
+  qr_pre_message: 'Hola! En breve te enviaremos el codigo QR para realizar el pago.',
 } as const;
 
 export type ConfigKey = keyof typeof DEFAULT_CONFIG;
