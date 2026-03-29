@@ -31,11 +31,11 @@ export default function Overview() {
         </div>
         <div>
           <span className="text-text-faint text-xs uppercase mr-2">Ask</span>
-          <span className="font-num">{s.prices.ask.toFixed(2)}</span>
+          <span className="font-num">{s.prices.ask.toFixed(3)}</span>
         </div>
         <div>
           <span className="text-text-faint text-xs uppercase mr-2">Bid</span>
-          <span className="font-num">{s.prices.bid.toFixed(2)}</span>
+          <span className="font-num">{s.prices.bid.toFixed(3)}</span>
         </div>
       </div>
 
