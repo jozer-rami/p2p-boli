@@ -13,6 +13,12 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 export interface PriceMonitorConfig {
   volatilityThresholdPercent: number;
   volatilityWindowMinutes: number;
+  gapGuardEnabled?: boolean;
+  gapGuardThresholdPercent?: number;
+  depthGuardEnabled?: boolean;
+  depthGuardMinUsdt?: number;
+  sessionDriftGuardEnabled?: boolean;
+  sessionDriftThresholdPercent?: number;
 }
 
 const DEFAULT_CONFIG: PriceMonitorConfig = {
@@ -32,6 +38,9 @@ export class PriceMonitor {
   private priceWindow: PriceSnapshot[] = [];
   private lastUpdateTime = 0;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private lastKnownPrice: number | null = null;
+  private lastSuccessfulFetch = 0;
+  private sessionBasePrice: number | null = null;
 
   constructor(
     bus: EventBus,
@@ -45,6 +54,11 @@ export class PriceMonitor {
     this.client = client;
     this.bybit = bybit ?? null;
     this.config = { ...DEFAULT_CONFIG, ...config };
+
+    this.bus.on('emergency:resolved', () => {
+      this.sessionBasePrice = null;
+      log.info('Session base price reset (emergency resolved)');
+    });
   }
 
   /**
@@ -115,6 +129,13 @@ export class PriceMonitor {
       if (refPrice !== undefined) {
         await this.checkVolatility(refPrice, now);
       }
+
+      // Guards
+      if (refPrice !== undefined) {
+        await this.checkGapGuard(refPrice, now);
+        await this.checkSessionDrift(refPrice);
+      }
+      await this.checkDepthGuard(this.latestPrices);
     } catch (err) {
       log.error({ err }, 'Failed to fetch prices');
 
@@ -161,6 +182,71 @@ export class PriceMonitor {
 
     // Always push the current snapshot
     this.priceWindow.push({ price: currentPrice, timestamp: now });
+  }
+
+  private async checkGapGuard(currentBid: number, now: number): Promise<void> {
+    if (!this.config.gapGuardEnabled) return;
+
+    const threshold = this.config.gapGuardThresholdPercent ?? 2;
+    const windowMs = this.config.volatilityWindowMinutes * 60 * 1000;
+
+    if (this.lastKnownPrice !== null && this.lastSuccessfulFetch > 0) {
+      const gapMs = now - this.lastSuccessfulFetch;
+      if (gapMs > windowMs) {
+        const changePercent = Math.abs((currentBid - this.lastKnownPrice) / this.lastKnownPrice) * 100;
+        if (changePercent > threshold) {
+          await this.bus.emit('price:gap-alert', {
+            lastKnownPrice: this.lastKnownPrice,
+            resumePrice: currentBid,
+            changePercent,
+            gapDurationSeconds: Math.floor(gapMs / 1000),
+          }, MODULE);
+          log.warn({ lastKnownPrice: this.lastKnownPrice, resumePrice: currentBid, changePercent }, 'Gap guard alert');
+        }
+      }
+    }
+
+    this.lastKnownPrice = currentBid;
+    this.lastSuccessfulFetch = now;
+  }
+
+  private async checkDepthGuard(prices: PlatformPrices[]): Promise<void> {
+    if (!this.config.depthGuardEnabled) return;
+
+    const minUsdt = this.config.depthGuardMinUsdt ?? 100;
+    const bybit = prices.find((p) => p.platform.startsWith('bybit'));
+    if (!bybit) return;
+
+    if (bybit.totalAsk < minUsdt || bybit.totalBid < minUsdt) {
+      await this.bus.emit('price:low-depth', {
+        totalAsk: bybit.totalAsk,
+        totalBid: bybit.totalBid,
+        minRequired: minUsdt,
+      }, MODULE);
+      log.warn({ totalAsk: bybit.totalAsk, totalBid: bybit.totalBid, minUsdt }, 'Low depth alert');
+    }
+  }
+
+  private async checkSessionDrift(currentBid: number): Promise<void> {
+    if (!this.config.sessionDriftGuardEnabled) return;
+
+    const threshold = this.config.sessionDriftThresholdPercent ?? 3;
+
+    if (this.sessionBasePrice === null) {
+      this.sessionBasePrice = currentBid;
+      log.info({ sessionBasePrice: currentBid }, 'Session base price set');
+      return;
+    }
+
+    const driftPercent = Math.abs((currentBid - this.sessionBasePrice) / this.sessionBasePrice) * 100;
+    if (driftPercent > threshold) {
+      await this.bus.emit('price:session-drift', {
+        sessionBasePrice: this.sessionBasePrice,
+        currentPrice: currentBid,
+        driftPercent,
+      }, MODULE);
+      log.warn({ sessionBasePrice: this.sessionBasePrice, currentPrice: currentBid, driftPercent }, 'Session drift alert');
+    }
   }
 
   start(intervalMs: number): void {
