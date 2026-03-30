@@ -124,6 +124,29 @@ export function runUnit(
       continue;
     }
 
+    // Detect market spread inversion (bid > ask) — mirrors EmergencyStop behavior
+    const spreadInverted = tick.ask > 0 && tick.bid > 0 && tick.bid > tick.ask;
+    if (spreadInverted) {
+      events.push(`paused(spread-inversion)`);
+      events.push(`emergency:triggered(spread_inversion)`);
+      inEmergency = true;
+      timeline.push({
+        tick: clock.tickCount + 1,
+        elapsed: clock.elapsed(),
+        ask: tick.ask,
+        bid: tick.bid,
+        marketSpread: tick.ask - tick.bid,
+        buyPrice: null,
+        sellPrice: null,
+        botSpread: null,
+        events,
+        paused: true,
+        pauseReason: 'spread-inversion',
+      });
+      clock.advance(scenario.tickIntervalMs);
+      continue;
+    }
+
     const prices = [tickToPlatformPrices(tick, clock.now())];
     const result = calculatePricing(prices, pricingConfig);
 
