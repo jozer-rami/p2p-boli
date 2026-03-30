@@ -10,6 +10,7 @@ import { createOrdersRouter } from './routes/orders.js';
 import { createTradesRouter } from './routes/trades.js';
 import { createPricesRouter } from './routes/prices.js';
 import { createBanksRouter } from './routes/banks.js';
+import { createSimulateRouter } from './routes/simulate.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { EventBus } from '../event-bus.js';
 import type { DB } from '../db/index.js';
@@ -27,6 +28,7 @@ export interface ApiDeps {
   bybitClient: any;
   getTodayProfit: () => Promise<{ tradesCount: number; profitBob: number; volumeUsdt: number }>;
   bybitUserId: string;
+  qrPreMessage: string;
 }
 
 export function createApiServer(deps: ApiDeps) {
@@ -53,6 +55,10 @@ export function createApiServer(deps: ApiDeps) {
   app.use('/api', createTradesRouter({ db: deps.db }));
   app.use('/api', createPricesRouter({ priceMonitor: deps.priceMonitor }));
   app.use('/api', createBanksRouter({ bankManager: deps.bankManager, db: deps.db }));
+  app.use('/api', createSimulateRouter({
+    bankManager: deps.bankManager,
+    qrPreMessage: deps.qrPreMessage,
+  }));
 
   // Serve built React dashboard in production
   const __dirname = dirname(fileURLToPath(import.meta.url));

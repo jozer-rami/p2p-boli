@@ -304,6 +304,7 @@ const telegramBot = new TelegramBot(
 const chatRelay = new ChatRelay(bus, bybitClient, telegramBot, envConfig.bybit.userId);
 
 // ---------------------------------------------------------------------------
+// LEGACY: remove once simulation is validated — use buildSellOrderMessages() instead
 // Auto-send QR code on new sell orders
 // ---------------------------------------------------------------------------
 
@@ -474,6 +475,7 @@ async function start(): Promise<void> {
     bybitClient: bybitClient,
     getTodayProfit,
     bybitUserId: envConfig.bybit.userId,
+    qrPreMessage,
   });
   apiServer.listen(envConfig.dashboard.port, () => {
     log.info({ port: envConfig.dashboard.port }, 'Dashboard API server started');
