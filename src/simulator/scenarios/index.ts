@@ -34,7 +34,16 @@ export function listScenarios(): Scenario[] {
 
 // Scenarios are registered explicitly here. Each scenario file exports a default Scenario.
 // New scenarios: import and add to the BUILTIN_SCENARIOS array.
-const BUILTIN_SCENARIOS: Array<() => Promise<{ default: Scenario }>> = [];
+const BUILTIN_SCENARIOS: Array<() => Promise<{ default: Scenario }>> = [
+  () => import('./flash-crash-5pct.js'),
+  () => import('./flash-crash-10pct.js'),
+  () => import('./spread-squeeze.js'),
+  () => import('./spread-inversion.js'),
+  () => import('./oscillation.js'),
+  () => import('./slow-drift.js'),
+  () => import('./stale-then-spike.js'),
+  () => import('./thin-book.js'),
+];
 
 export async function loadBuiltinScenarios(): Promise<void> {
   for (const loader of BUILTIN_SCENARIOS) {
