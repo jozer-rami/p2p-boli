@@ -2,6 +2,15 @@
 
 import { calculatePricing } from '../modules/ad-manager/pricing.js';
 import type { PricingConfig } from '../modules/ad-manager/types.js';
+import { EventBus } from '../event-bus.js';
+import type { EventMap } from '../event-bus.js';
+import { createTestDB } from '../db/index.js';
+import { bankAccounts } from '../db/schema.js';
+import { PriceMonitor } from '../modules/price-monitor/index.js';
+import { AdManager } from '../modules/ad-manager/index.js';
+import { EmergencyStop } from '../modules/emergency-stop/index.js';
+import { ReplayPriceSource } from './mocks/replay-price-source.js';
+import { MockBybitClient } from './mocks/mock-bybit-client.js';
 import { SimulatedClock } from './clock.js';
 import { tickToPlatformPrices } from './types.js';
 import type {
@@ -157,4 +166,188 @@ export function runUnit(
     timeline,
     summary: buildSummary(timeline, clock, scenario),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Integration mode — wires real modules with mock dependencies
+// ---------------------------------------------------------------------------
+
+export async function runIntegration(
+  scenario: Scenario,
+  pricingConfig: PricingConfig,
+  volatilityConfig: VolatilityConfig,
+): Promise<SimulationResult> {
+  const { db, close } = createTestDB();
+
+  try {
+    // Seed a mock bank account so ad inserts satisfy the FK constraint
+    await db.insert(bankAccounts).values({
+      id: 1,
+      name: 'MockBank',
+      bank: 'MockBank',
+      accountHint: '***000',
+    });
+
+    const bus = new EventBus(db);
+    const clock = new SimulatedClock(0);
+
+    // Mock dependencies
+    const replaySource = new ReplayPriceSource(scenario.ticks);
+    const mockBybit = new MockBybitClient();
+
+    // Wire real modules with mock deps (cast mocks to satisfy module type constraints).
+    // We intentionally omit the bybit client from PriceMonitor so it uses only
+    // the ReplayPriceSource (CriptoYa mock) — the MockBybitClient returns empty
+    // online ads which would zero-out prices and break volatility detection.
+    const priceMonitor = new PriceMonitor(
+      bus,
+      db,
+      replaySource as any,
+      volatilityConfig,
+    );
+
+    const adManager = new AdManager(
+      bus,
+      db,
+      mockBybit as any,
+      pricingConfig,
+      () => ({ id: 1, name: 'MockBank' }),
+    );
+
+    // Initialise AdManager payment methods from mock
+    await adManager.syncExistingAds();
+
+    let emergencyActive = false;
+
+    const emergencyStop = new EmergencyStop(bus, db, {
+      removeAllAds: () => adManager.removeAllAds(),
+      getExposure: async () => ({ usdt: 0, bob: 0 }),
+      getMarketState: () => {
+        const prices = priceMonitor.getLatestPrices();
+        const bybit = prices.find((p) => p.platform.startsWith('bybit'));
+        return { ask: bybit?.ask ?? 0, bid: bybit?.bid ?? 0 };
+      },
+      getPendingOrderCount: () => 0,
+      stopPolling: () => {
+        emergencyActive = true;
+      },
+      startPolling: () => {
+        emergencyActive = false;
+      },
+    });
+
+    // Collect events per tick
+    let pendingEvents: string[] = [];
+
+    const trackedEvents: (keyof EventMap)[] = [
+      'price:updated',
+      'price:volatility-alert',
+      'price:stale',
+      'ad:created',
+      'ad:repriced',
+      'ad:paused',
+      'ad:resumed',
+      'ad:spread-inversion',
+      'emergency:triggered',
+      'emergency:resolved',
+    ];
+
+    for (const event of trackedEvents) {
+      bus.on(event, (payload: any) => {
+        if (event === 'emergency:triggered') {
+          pendingEvents.push(`emergency:triggered(${payload.reason})`);
+        } else if (event === 'ad:created') {
+          pendingEvents.push(`ad:created(${payload.side},${payload.price})`);
+        } else if (event === 'ad:repriced') {
+          pendingEvents.push(`repriced(${payload.side}:${payload.oldPrice}->${payload.newPrice})`);
+        } else if (event === 'ad:paused') {
+          pendingEvents.push(`ad:paused(${payload.side},${payload.reason})`);
+        } else if (event === 'price:volatility-alert') {
+          pendingEvents.push(`volatility-alert(${payload.changePercent.toFixed(1)}%)`);
+        } else {
+          pendingEvents.push(event);
+        }
+      });
+    }
+
+    // Process each tick
+    const timeline: TimelineEntry[] = [];
+
+    for (const tick of scenario.ticks) {
+      pendingEvents = [];
+
+      // Advance clock and set replay source time
+      replaySource.setTime(clock.now());
+
+      // 1. PriceMonitor fetches prices -> emits price:updated -> may emit volatility-alert
+      await priceMonitor.fetchOnce();
+
+      // 2. AdManager tick (if not in emergency)
+      if (!emergencyActive) {
+        try {
+          await adManager.tick();
+        } catch {
+          // AdManager errors are logged but don't crash the simulation
+        }
+      }
+
+      // Determine pricing state for timeline
+      const prices = priceMonitor.getLatestPrices();
+      const bybitEntry = prices.find((p) => p.platform.startsWith('bybit'));
+      const currentAsk = bybitEntry?.ask ?? tick.ask;
+      const currentBid = bybitEntry?.bid ?? tick.bid;
+
+      // Check what AdManager computed
+      const currentPricing = adManager.getCurrentPrices();
+      let buyPrice: number | null = null;
+      let sellPrice: number | null = null;
+      let botSpread: number | null = null;
+      let paused = false;
+
+      if (emergencyActive) {
+        paused = true;
+      } else if (currentPricing) {
+        buyPrice = currentPricing.buyPrice;
+        sellPrice = currentPricing.sellPrice;
+        botSpread = currentPricing.spread;
+      } else {
+        // Fallback — use calculatePricing on the current prices
+        const result = calculatePricing(prices, pricingConfig);
+        paused = result.paused.buy && result.paused.sell;
+        if (!paused) {
+          buyPrice = result.buyPrice;
+          sellPrice = result.sellPrice;
+          botSpread = result.spread;
+        }
+      }
+
+      timeline.push({
+        tick: clock.tickCount + 1,
+        elapsed: clock.elapsed(),
+        ask: currentAsk,
+        bid: currentBid,
+        marketSpread: currentAsk > 0 && currentBid > 0 ? currentAsk - currentBid : 0,
+        buyPrice,
+        sellPrice,
+        botSpread,
+        events: [...pendingEvents],
+        paused,
+        pauseReason: emergencyActive ? 'emergency' : undefined,
+      });
+
+      clock.advance(scenario.tickIntervalMs);
+    }
+
+    // Clean up listeners
+    bus.removeAllListeners();
+
+    return {
+      scenario: scenario.name,
+      mode: 'integration',
+      timeline,
+      summary: buildSummary(timeline, clock, scenario),
+    };
+  } finally {
+    close();
+  }
 }
