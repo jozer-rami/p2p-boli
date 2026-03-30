@@ -43,6 +43,9 @@ const BUILTIN_SCENARIOS: Array<() => Promise<{ default: Scenario }>> = [
   () => import('./slow-drift.js'),
   () => import('./stale-then-spike.js'),
   () => import('./thin-book.js'),
+  () => import('./stale-gap-bypass.js'),
+  () => import('./thin-book-crash.js'),
+  () => import('./repeated-micro-gaps.js'),
 ];
 
 export async function loadBuiltinScenarios(): Promise<void> {
