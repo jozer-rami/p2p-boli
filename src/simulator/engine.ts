@@ -100,9 +100,30 @@ export function runUnit(
   const timeline: TimelineEntry[] = [];
   let prevBuyPrice: number | null = null;
   let prevSellPrice: number | null = null;
+  let inEmergency = false;
 
   for (const tick of scenario.ticks) {
     const events: string[] = [];
+
+    // If in emergency, all ticks are paused (simulates EmergencyStop behavior)
+    if (inEmergency) {
+      timeline.push({
+        tick: clock.tickCount + 1,
+        elapsed: clock.elapsed(),
+        ask: tick.ask,
+        bid: tick.bid,
+        marketSpread: tick.ask > 0 && tick.bid > 0 ? tick.ask - tick.bid : 0,
+        buyPrice: null,
+        sellPrice: null,
+        botSpread: null,
+        events: ['emergency:active'],
+        paused: true,
+        pauseReason: 'emergency',
+      });
+      clock.advance(scenario.tickIntervalMs);
+      continue;
+    }
+
     const prices = [tickToPlatformPrices(tick, clock.now())];
     const result = calculatePricing(prices, pricingConfig);
 
@@ -140,6 +161,8 @@ export function runUnit(
       const vol = checkVolatility(tick.bid, clock.now(), priceWindow, volatilityConfig);
       if (vol.alert) {
         events.push(`volatility-alert(${vol.changePercent.toFixed(1)}%)`);
+        events.push(`emergency:triggered(volatility)`);
+        inEmergency = true;
       }
     }
 
