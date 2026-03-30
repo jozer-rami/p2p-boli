@@ -123,6 +123,12 @@ async function main(): Promise<void> {
   const volatilityConfig = {
     volatilityThresholdPercent: parseFloat(args.configOverrides.volatility_threshold_percent ?? '2'),
     volatilityWindowMinutes: parseFloat(args.configOverrides.volatility_window_minutes ?? '5'),
+    gapGuardEnabled: args.configOverrides.gap_guard_enabled === 'true',
+    gapGuardThresholdPercent: parseFloat(args.configOverrides.gap_guard_threshold_percent ?? '2'),
+    depthGuardEnabled: args.configOverrides.depth_guard_enabled === 'true',
+    depthGuardMinUsdt: parseFloat(args.configOverrides.depth_guard_min_usdt ?? '100'),
+    sessionDriftGuardEnabled: args.configOverrides.session_drift_guard_enabled === 'true',
+    sessionDriftThresholdPercent: parseFloat(args.configOverrides.session_drift_threshold_percent ?? '3'),
   };
 
   // Run simulation

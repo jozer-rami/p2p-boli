@@ -23,6 +23,12 @@ import type {
 export interface VolatilityConfig {
   volatilityThresholdPercent: number;
   volatilityWindowMinutes: number;
+  gapGuardEnabled?: boolean;
+  gapGuardThresholdPercent?: number;
+  depthGuardEnabled?: boolean;
+  depthGuardMinUsdt?: number;
+  sessionDriftGuardEnabled?: boolean;
+  sessionDriftThresholdPercent?: number;
 }
 
 export interface PriceSnapshot {
@@ -99,6 +105,9 @@ export function runUnit(
   let prevBuyPrice: number | null = null;
   let prevSellPrice: number | null = null;
   let inEmergency = false;
+  let lastKnownPrice: number | null = null;
+  let lastValidTickTime = 0;
+  let sessionBasePrice: number | null = null;
 
   for (const tick of scenario.ticks) {
     const events: string[] = [];
@@ -184,6 +193,50 @@ export function runUnit(
         events.push(`volatility-alert(${vol.changePercent.toFixed(1)}%)`);
         events.push(`emergency:triggered(volatility)`);
         inEmergency = true;
+      }
+    }
+
+    // Gap guard
+    if (volatilityConfig.gapGuardEnabled && tick.bid > 0) {
+      const windowMs = volatilityConfig.volatilityWindowMinutes * 60 * 1000;
+      if (lastKnownPrice !== null && lastValidTickTime > 0) {
+        const gapMs = clock.now() - lastValidTickTime;
+        if (gapMs > windowMs) {
+          const gapChange = Math.abs((tick.bid - lastKnownPrice) / lastKnownPrice) * 100;
+          const gapThreshold = volatilityConfig.gapGuardThresholdPercent ?? 2;
+          if (gapChange > gapThreshold) {
+            events.push(`gap-alert(${gapChange.toFixed(1)}%,${Math.floor(gapMs / 1000)}s)`);
+            events.push(`emergency:triggered(gap_alert)`);
+            inEmergency = true;
+          }
+        }
+      }
+      lastKnownPrice = tick.bid;
+      lastValidTickTime = clock.now();
+    }
+
+    // Depth guard
+    if (volatilityConfig.depthGuardEnabled && tick.ask > 0 && tick.bid > 0) {
+      const minUsdt = volatilityConfig.depthGuardMinUsdt ?? 100;
+      if (tick.totalAsk < minUsdt || tick.totalBid < minUsdt) {
+        events.push(`low-depth(ask:${tick.totalAsk},bid:${tick.totalBid},min:${minUsdt})`);
+        events.push(`emergency:triggered(low_depth)`);
+        inEmergency = true;
+      }
+    }
+
+    // Session drift guard
+    if (volatilityConfig.sessionDriftGuardEnabled && tick.bid > 0) {
+      if (sessionBasePrice === null) {
+        sessionBasePrice = tick.bid;
+      } else {
+        const drift = Math.abs((tick.bid - sessionBasePrice) / sessionBasePrice) * 100;
+        const driftThreshold = volatilityConfig.sessionDriftThresholdPercent ?? 3;
+        if (drift > driftThreshold) {
+          events.push(`session-drift(${drift.toFixed(1)}%,base:${sessionBasePrice.toFixed(3)})`);
+          events.push(`emergency:triggered(session_drift)`);
+          inEmergency = true;
+        }
       }
     }
 
