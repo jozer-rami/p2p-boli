@@ -1,8 +1,9 @@
 # Smart Repricing Engine — Design Spec
 
-> Status: Draft
+> Status: Draft (updated 2026-03-30)
 > Date: 2026-03-29
 > Inspired by: AutoP2P's 12-phase strategy engine
+> Dependencies: Volatility guards (2026-03-30), Simulator (2026-03-29)
 
 ---
 
@@ -336,6 +337,43 @@ Modified:
   src/index.ts                      # Wire engine, register API routes
   src/modules/telegram/index.ts     # Listen to reprice:cycle
 
-Deleted:
-  src/modules/ad-manager/pricing.ts # Replaced by repricing engine
+Kept (deprecated):
+  src/modules/ad-manager/pricing.ts # Kept for simulator compatibility — simulator
+                                     # imports calculatePricing(). Will be updated
+                                     # to use the repricing engine in a future pass.
 ```
+
+---
+
+## 11. Integration Notes (added 2026-03-30)
+
+### Volatility Guards Compatibility
+
+Since the spec was written, 3 new volatility guards were added to PriceMonitor:
+- `price:gap-alert` — detects price gaps when data resumes after a pause
+- `price:low-depth` — detects thin order books (low USDT available)
+- `price:session-drift` — detects slow cumulative price drift over a session
+
+EmergencyStop now subscribes to all 3 (plus the existing volatility/stale/inversion triggers).
+The emergency trigger type is now: `'volatility' | 'spread_inversion' | 'stale_data' | 'manual' | 'gap_alert' | 'low_depth' | 'session_drift'`.
+
+**Impact on engine phases:**
+- **Phase 4 (spread check):** If spread < minSpread, engine returns `action: 'pause'` but does NOT emit emergency events. The existing guards (gap, depth, drift) handle emergency triggers independently. The engine is purely a pricing pipeline — it should never trigger an emergency stop itself.
+- **Phase 5 (volume assessment):** The `price:low-depth` guard already monitors total order book depth. The engine's Phase 5 focuses on per-price-level volume weighting for competitor analysis — complementary, not duplicative.
+
+### Simulator Compatibility
+
+A market simulation engine exists at `src/simulator/` with:
+- Synthetic scenarios (gap, depth crash, drift, spread inversion, etc.)
+- Mock Bybit client and replay price source
+- Unit mode (PriceMonitor + AdManager + EmergencyStop wired together)
+
+The simulator currently imports `calculatePricing` from `src/modules/ad-manager/pricing.ts`. This file must NOT be deleted. It stays as a deprecated legacy module until the simulator is updated to use the new `RepricingEngine`.
+
+**Future work (not in this spec):** Update the simulator to use `RepricingEngine` instead of `calculatePricing`. This will enable testing the 12-phase pipeline with synthetic market scenarios (aggressive competitors, thin books, price wars, etc.).
+
+### EventMap Additions
+
+The `reprice:cycle` event is added alongside the 3 new guard events already in the EventMap. No conflicts — they serve different purposes:
+- Guard events → trigger emergency stop
+- `reprice:cycle` → inform dashboard/Telegram of pricing decisions
