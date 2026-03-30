@@ -91,6 +91,12 @@ const pollIntervalOrdersMs = parseInt(await getConfig('poll_interval_orders_ms')
 const pollIntervalAdsMs = parseInt(await getConfig('poll_interval_ads_ms'), 10);
 const pollIntervalPricesMs = parseInt(await getConfig('poll_interval_prices_ms'), 10);
 const qrPreMessage = await getConfig('qr_pre_message');
+const gapGuardEnabled = (await getConfig('gap_guard_enabled')) === 'true';
+const gapGuardThresholdPercent = parseFloat(await getConfig('gap_guard_threshold_percent'));
+const depthGuardEnabled = (await getConfig('depth_guard_enabled')) === 'true';
+const depthGuardMinUsdt = parseFloat(await getConfig('depth_guard_min_usdt'));
+const sessionDriftGuardEnabled = (await getConfig('session_drift_guard_enabled')) === 'true';
+const sessionDriftThresholdPercent = parseFloat(await getConfig('session_drift_threshold_percent'));
 
 // ---------------------------------------------------------------------------
 // Modules
@@ -101,6 +107,12 @@ const bankManager = new BankManager(db, bus);
 const priceMonitor = new PriceMonitor(bus, db, criptoYaClient, {
   volatilityThresholdPercent,
   volatilityWindowMinutes,
+  gapGuardEnabled,
+  gapGuardThresholdPercent,
+  depthGuardEnabled,
+  depthGuardMinUsdt,
+  sessionDriftGuardEnabled,
+  sessionDriftThresholdPercent,
 }, bybitClient);
 
 const adManager = new AdManager(
