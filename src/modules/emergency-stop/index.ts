@@ -42,6 +42,18 @@ export class EmergencyStop {
     this.bus.on('telegram:emergency', () => {
       return this.trigger('manual', 'Manual emergency triggered via Telegram');
     });
+
+    this.bus.on('price:gap-alert', (payload) => {
+      return this.trigger('gap_alert', `Price jumped ${payload.changePercent.toFixed(1)}% after ${payload.gapDurationSeconds}s data gap`);
+    });
+
+    this.bus.on('price:low-depth', (payload) => {
+      return this.trigger('low_depth', `Order book depth ${Math.min(payload.totalAsk, payload.totalBid)} USDT below minimum ${payload.minRequired}`);
+    });
+
+    this.bus.on('price:session-drift', (payload) => {
+      return this.trigger('session_drift', `Price drifted ${payload.driftPercent.toFixed(1)}% from session start`);
+    });
   }
 
   async trigger(type: EmergencyTrigger, reason: string): Promise<void> {

@@ -133,6 +133,41 @@ describe('EmergencyStop', () => {
     expect(deps.stopPolling).toHaveBeenCalledOnce();
   });
 
+  it('triggers on price:gap-alert', async () => {
+    await bus.emit('price:gap-alert', {
+      lastKnownPrice: 6.89,
+      resumePrice: 7.27,
+      changePercent: 5.5,
+      gapDurationSeconds: 360,
+    }, 'test');
+
+    expect(emergencyStop.getState()).toBe('emergency');
+    expect(deps.removeAllAds).toHaveBeenCalled();
+    expect(deps.stopPolling).toHaveBeenCalled();
+  });
+
+  it('triggers on price:low-depth', async () => {
+    await bus.emit('price:low-depth', {
+      totalAsk: 50,
+      totalBid: 30,
+      minRequired: 100,
+    }, 'test');
+
+    expect(emergencyStop.getState()).toBe('emergency');
+    expect(deps.removeAllAds).toHaveBeenCalled();
+  });
+
+  it('triggers on price:session-drift', async () => {
+    await bus.emit('price:session-drift', {
+      sessionBasePrice: 6.89,
+      currentPrice: 7.17,
+      driftPercent: 4.1,
+    }, 'test');
+
+    expect(emergencyStop.getState()).toBe('emergency');
+    expect(deps.removeAllAds).toHaveBeenCalled();
+  });
+
   it('resolves on resume', async () => {
     const resolved: unknown[] = [];
     bus.on('emergency:resolved', (payload) => {
