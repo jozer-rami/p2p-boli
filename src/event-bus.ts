@@ -25,6 +25,22 @@ export interface EventMap {
     windowMinutes: number;
   };
   'price:stale': { lastUpdate: number; staleDurationSeconds: number };
+  'price:gap-alert': {
+    lastKnownPrice: number;
+    resumePrice: number;
+    changePercent: number;
+    gapDurationSeconds: number;
+  };
+  'price:low-depth': {
+    totalAsk: number;
+    totalBid: number;
+    minRequired: number;
+  };
+  'price:session-drift': {
+    sessionBasePrice: number;
+    currentPrice: number;
+    driftPercent: number;
+  };
 
   'ad:created': { adId: string; side: Side; price: number; bankAccount: string };
   'ad:repriced': { adId: string; side: Side; oldPrice: number; newPrice: number };
@@ -44,7 +60,7 @@ export interface EventMap {
 
   'emergency:triggered': {
     reason: string;
-    trigger: 'volatility' | 'spread_inversion' | 'stale_data' | 'manual';
+    trigger: 'volatility' | 'spread_inversion' | 'stale_data' | 'manual' | 'gap_alert' | 'low_depth' | 'session_drift';
     marketState: { ask: number; bid: number };
     exposure: { usdt: number; bob: number };
   };

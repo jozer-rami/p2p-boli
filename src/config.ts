@@ -57,6 +57,12 @@ export const DEFAULT_CONFIG = {
   sleep_start_hour: '23',
   sleep_end_hour: '10',
   qr_pre_message: 'Hola! En breve te enviaremos el codigo QR para realizar el pago.',
+  gap_guard_enabled: 'false',
+  gap_guard_threshold_percent: '2',
+  depth_guard_enabled: 'false',
+  depth_guard_min_usdt: '100',
+  session_drift_guard_enabled: 'false',
+  session_drift_threshold_percent: '3',
 } as const;
 
 export type ConfigKey = keyof typeof DEFAULT_CONFIG;
