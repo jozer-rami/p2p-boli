@@ -32,13 +32,13 @@ export function listScenarios(): Scenario[] {
   return Array.from(registry.values());
 }
 
+// Scenarios are registered explicitly here. Each scenario file exports a default Scenario.
+// New scenarios: import and add to the BUILTIN_SCENARIOS array.
+const BUILTIN_SCENARIOS: Array<() => Promise<{ default: Scenario }>> = [];
+
 export async function loadBuiltinScenarios(): Promise<void> {
-  const modules = import.meta.glob<{ default: Scenario }>('./*.ts', { eager: true });
-  for (const [path, mod] of Object.entries(modules)) {
-    const filename = path.split('/').pop() ?? '';
-    if (filename === 'index.ts' || filename === 'generators.ts') continue;
-    if (mod.default) {
-      registerScenario(mod.default);
-    }
+  for (const loader of BUILTIN_SCENARIOS) {
+    const mod = await loader();
+    registerScenario(mod.default);
   }
 }
