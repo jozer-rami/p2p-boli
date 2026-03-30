@@ -10,9 +10,9 @@ beforeAll(async () => {
 });
 
 describe('simulator smoke tests', () => {
-  it('has all 8 built-in scenarios registered', () => {
+  it('has all built-in scenarios registered', () => {
     const scenarios = listScenarios();
-    expect(scenarios.length).toBe(8);
+    expect(scenarios.length).toBe(11);
     expect(scenarios.map((s) => s.name)).toContain('flash-crash-5pct');
     expect(scenarios.map((s) => s.name)).toContain('spread-inversion');
     expect(scenarios.map((s) => s.name)).toContain('oscillation');
