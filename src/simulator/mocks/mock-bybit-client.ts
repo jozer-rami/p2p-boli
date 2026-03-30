@@ -48,6 +48,11 @@ export class MockBybitClient {
   private activeAds = new Map<string, { side: string; price: number; amount: number }>();
   private nextAdId = 1;
   private dryRun = false;
+  private timeMs = 0;
+
+  setTime(ms: number): void {
+    this.timeMs = ms;
+  }
 
   async createAd(params: CreateAdParams): Promise<string> {
     const adId = `mock-ad-${this.nextAdId++}`;
@@ -64,7 +69,7 @@ export class MockBybitClient {
       side: params.side,
       price,
       amount,
-      timestamp: Date.now(),
+      timestamp: this.timeMs,
     });
     return adId;
   }
@@ -80,7 +85,7 @@ export class MockBybitClient {
       adId,
       price,
       amount,
-      timestamp: Date.now(),
+      timestamp: this.timeMs,
     });
   }
 
@@ -89,7 +94,7 @@ export class MockBybitClient {
     this.adLog.push({
       action: 'cancel',
       adId,
-      timestamp: Date.now(),
+      timestamp: this.timeMs,
     });
   }
 

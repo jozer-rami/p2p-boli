@@ -58,8 +58,6 @@ export function checkVolatility(
 
 export function buildSummary(
   timeline: TimelineEntry[],
-  _clock: SimulatedClock,
-  _scenario: Scenario,
 ): SimulationSummary {
   const spreads = timeline
     .filter((t) => t.botSpread !== null)
@@ -210,7 +208,7 @@ export function runUnit(
     scenario: scenario.name,
     mode: 'unit',
     timeline,
-    summary: buildSummary(timeline, clock, scenario),
+    summary: buildSummary(timeline),
   };
 }
 
@@ -322,8 +320,9 @@ export async function runIntegration(
     for (const tick of scenario.ticks) {
       pendingEvents = [];
 
-      // Advance clock and set replay source time
+      // Advance clock and set mock times
       replaySource.setTime(clock.now());
+      mockBybit.setTime(clock.now());
 
       // 1. PriceMonitor fetches prices -> emits price:updated -> may emit volatility-alert
       await priceMonitor.fetchOnce();
@@ -391,7 +390,7 @@ export async function runIntegration(
       scenario: scenario.name,
       mode: 'integration',
       timeline,
-      summary: buildSummary(timeline, clock, scenario),
+      summary: buildSummary(timeline),
     };
   } finally {
     close();
