@@ -1,6 +1,7 @@
 import { useStatus, useOrders } from '../hooks/useApi';
 import OrderRow from '../components/OrderRow';
 import BankQrManager from '../components/BankQrManager';
+import GuardConfigPanel from '../components/GuardConfig';
 
 export default function Overview() {
   const { data: status, isLoading } = useStatus();
@@ -65,9 +66,12 @@ export default function Overview() {
           )}
         </div>
 
-        <div>
-          <h2 className="text-xs uppercase text-text-faint tracking-wide mb-3">Bank Accounts</h2>
-          <BankQrManager />
+        <div className="flex flex-col gap-8">
+          <div>
+            <h2 className="text-xs uppercase text-text-faint tracking-wide mb-3">Bank Accounts</h2>
+            <BankQrManager />
+          </div>
+          <GuardConfigPanel />
         </div>
       </div>
     </div>
