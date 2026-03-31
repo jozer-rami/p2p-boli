@@ -285,6 +285,18 @@ export class PriceMonitor {
     log.info({ minutes }, 'Volatility window updated');
   }
 
+  setVolatilityConfig(updates: { thresholdPercent?: number; windowMinutes?: number }): void {
+    if (updates.thresholdPercent !== undefined) this.config.volatilityThresholdPercent = updates.thresholdPercent;
+    if (updates.windowMinutes !== undefined) this.config.volatilityWindowMinutes = updates.windowMinutes;
+    log.info({ volatilityConfig: this.config }, 'Volatility config updated');
+  }
+
+  restart(intervalMs: number): void {
+    this.stop();
+    this.start(intervalMs);
+    log.info({ intervalMs }, 'PriceMonitor restarted with new interval');
+  }
+
   updateGuardConfig(updates: Partial<PriceMonitorConfig>): void {
     this.config = { ...this.config, ...updates };
     log.info({ updates }, 'Guard config updated');

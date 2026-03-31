@@ -47,7 +47,7 @@ export class OrderHandler {
   private readonly bus: EventBus;
   private readonly db: DB;
   private readonly bybit: BybitClient;
-  private readonly autoCancelTimeoutMs: number;
+  private autoCancelTimeoutMs: number;
 
   /** In-memory map of orderId → TrackedOrder */
   private readonly trackedOrders: Map<string, TrackedOrder> = new Map();
@@ -443,5 +443,16 @@ export class OrderHandler {
       this.intervalHandle = null;
       log.info('OrderHandler stopped');
     }
+  }
+
+  setAutoCancelTimeout(ms: number): void {
+    this.autoCancelTimeoutMs = ms;
+    log.info({ autoCancelTimeoutMs: ms }, 'Auto-cancel timeout updated');
+  }
+
+  restart(intervalMs: number): void {
+    this.stop();
+    this.start(intervalMs);
+    log.info({ intervalMs }, 'OrderHandler restarted with new interval');
   }
 }

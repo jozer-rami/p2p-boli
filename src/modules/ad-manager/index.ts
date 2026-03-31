@@ -461,6 +461,12 @@ export class AdManager {
     }
   }
 
+  restart(intervalMs: number): void {
+    this.stop();
+    this.start(intervalMs);
+    log.info({ intervalMs }, 'AdManager restarted with new interval');
+  }
+
   // ---------------------------------------------------------------------------
   // Accessors
   // ---------------------------------------------------------------------------
