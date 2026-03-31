@@ -12,9 +12,11 @@ import { createPricesRouter } from './routes/prices.js';
 import { createBanksRouter } from './routes/banks.js';
 import { createSimulateRouter } from './routes/simulate.js';
 import { createConfigRouter } from './routes/config.js';
+import { createRepricingRouter } from './routes/repricing.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { EventBus } from '../event-bus.js';
 import type { DB } from '../db/index.js';
+import type { RepricingEngine } from '../modules/repricing-engine/index.js';
 
 const log = createModuleLogger('api');
 
@@ -30,6 +32,7 @@ export interface ApiDeps {
   getTodayProfit: () => Promise<{ tradesCount: number; profitBob: number; volumeUsdt: number }>;
   bybitUserId: string;
   qrPreMessage: string;
+  repricingEngine: RepricingEngine;
 }
 
 export function createApiServer(deps: ApiDeps) {
@@ -64,6 +67,7 @@ export function createApiServer(deps: ApiDeps) {
     db: deps.db,
     priceMonitor: deps.priceMonitor,
   }));
+  app.use('/api', createRepricingRouter({ engine: deps.repricingEngine }));
 
   // Serve built React dashboard in production
   const __dirname = dirname(fileURLToPath(import.meta.url));

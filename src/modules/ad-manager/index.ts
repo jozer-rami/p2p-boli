@@ -6,6 +6,7 @@ import type { BybitClient } from '../../bybit/client.js';
 import { calculatePricing } from './pricing.js';
 import type { PricingConfig } from './types.js';
 import { createModuleLogger } from '../../utils/logger.js';
+import type { RepricingEngine } from '../repricing-engine/index.js';
 
 const log = createModuleLogger('ad-manager');
 
@@ -54,6 +55,7 @@ export class AdManager {
   private waitingForSpread = false;
   private lastBybitAsk = 0;
   private lastBybitBid = 0;
+  private engine: RepricingEngine | null = null;
 
   constructor(
     bus: EventBus,
@@ -123,6 +125,53 @@ export class AdManager {
   // ---------------------------------------------------------------------------
 
   async tick(): Promise<void> {
+    // If engine is set, delegate to it
+    if (this.engine) {
+      try {
+        const currentPrices = {
+          buy: this.activeAds.get('buy')?.price ?? null,
+          sell: this.activeAds.get('sell')?.price ?? null,
+        };
+
+        const result = await this.engine.reprice(currentPrices);
+
+        // Phase 12 — LOG: emit event
+        await this.bus.emit('reprice:cycle', {
+          action: result.action,
+          buyPrice: result.buyPrice,
+          sellPrice: result.sellPrice,
+          spread: result.spread,
+          position: result.position,
+          filteredCompetitors: result.filteredCompetitors,
+          mode: result.mode,
+          reason: result.reason,
+        }, MODULE);
+
+        switch (result.action) {
+          case 'reprice':
+            for (const side of ['buy', 'sell'] as Side[]) {
+              const price = side === 'buy' ? result.buyPrice : result.sellPrice;
+              const manualPaused = this.pausedSides.get(side) ?? false;
+              await this.manageSide(side, price, manualPaused);
+            }
+            break;
+          case 'hold':
+            log.debug({ reason: result.reason }, 'Repricing held');
+            break;
+          case 'pause':
+            log.info({ reason: result.reason }, 'Repricing paused — removing ads');
+            await this.removeAllAds();
+            await this.bus.emit('ad:paused', { side: 'buy' as Side, reason: result.reason }, MODULE);
+            await this.bus.emit('ad:paused', { side: 'sell' as Side, reason: result.reason }, MODULE);
+            break;
+        }
+        return;
+      } catch (err) {
+        log.error({ err }, 'Repricing engine error — falling back to legacy pricing');
+      }
+    }
+
+    // Legacy fallback (existing code below)
     if (this.latestPrices.length === 0) {
       log.debug('No prices yet — skipping tick');
       return;
@@ -380,6 +429,11 @@ export class AdManager {
   updateConfig(config: PricingConfig): void {
     this.config = config;
     log.info({ config }, 'AdManager config updated');
+  }
+
+  setEngine(engine: RepricingEngine): void {
+    this.engine = engine;
+    log.info('Repricing engine connected');
   }
 
   // ---------------------------------------------------------------------------

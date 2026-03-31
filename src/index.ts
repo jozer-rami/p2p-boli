@@ -12,6 +12,8 @@ import { EmergencyStop } from './modules/emergency-stop/index.js';
 import { ChatRelay } from './modules/chat-relay/index.js';
 import { TelegramBot } from './modules/telegram/index.js';
 import { createApiServer } from './api/index.js';
+import { RepricingEngine } from './modules/repricing-engine/index.js';
+import { createRepricingRouter } from './api/routes/repricing.js';
 import { createModuleLogger } from './utils/logger.js';
 import { eq } from 'drizzle-orm';
 
@@ -122,6 +124,34 @@ const adManager = new AdManager(
   { minSpread, maxSpread, tradeAmountUsdt },
   (side, amount) => bankManager.selectAccount({ side, minBalance: amount }),
 );
+
+// Repricing engine
+const repricingEngine = new RepricingEngine(
+  {
+    mode: 'conservative',
+    targetPosition: 3,
+    antiOscillationThreshold: 0.003,
+    minSpread,
+    maxSpread,
+    filters: {
+      minOrderAmount: 100,
+      verifiedOnly: true,
+      minCompletionRate: 80,
+      minOrderCount: 10,
+      merchantLevels: ['GA', 'VA'],
+    },
+    selfUserId: envConfig.bybit.userId,
+  },
+  async () => {
+    const [sell, buy] = await Promise.all([
+      bybitClient.getOnlineAdsEnriched('sell', 'USDT', 'BOB'),
+      bybitClient.getOnlineAdsEnriched('buy', 'USDT', 'BOB'),
+    ]);
+    return { sell, buy };
+  },
+);
+
+adManager.setEngine(repricingEngine);
 
 const orderHandler = new OrderHandler(bus, db, bybitClient, autoCancelTimeoutMs);
 
@@ -488,6 +518,7 @@ async function start(): Promise<void> {
     getTodayProfit,
     bybitUserId: envConfig.bybit.userId,
     qrPreMessage,
+    repricingEngine,
   });
   apiServer.listen(envConfig.dashboard.port, () => {
     log.info({ port: envConfig.dashboard.port }, 'Dashboard API server started');
