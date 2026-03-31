@@ -7,6 +7,7 @@ const baseConfig: PricingConfig = {
   minSpread: 0.05,
   maxSpread: 0.50,
   tradeAmountUsdt: 100,
+  imbalanceThresholdUsdt: 300,
 };
 
 describe('calculatePricing', () => {
@@ -48,7 +49,7 @@ describe('calculatePricing', () => {
       { platform: 'binance', ask: 9.36, totalAsk: 500, bid: 9.35, totalBid: 500, time: Date.now() },
     ];
 
-    const config: PricingConfig = { minSpread: 0.05, maxSpread: 0.50, tradeAmountUsdt: 100 };
+    const config: PricingConfig = { minSpread: 0.05, maxSpread: 0.50, tradeAmountUsdt: 100, imbalanceThresholdUsdt: 300 };
     const result = calculatePricing(prices, config);
 
     // mid = 9.355, spread = 0.05
@@ -66,7 +67,7 @@ describe('calculatePricing', () => {
       { platform: 'binance', ask: 10.00, totalAsk: 500, bid: 9.00, totalBid: 500, time: Date.now() },
     ];
 
-    const config: PricingConfig = { minSpread: 0.05, maxSpread: 0.50, tradeAmountUsdt: 100 };
+    const config: PricingConfig = { minSpread: 0.05, maxSpread: 0.50, tradeAmountUsdt: 100, imbalanceThresholdUsdt: 300 };
     const result = calculatePricing(prices, config);
 
     // mid = 9.50, spread = 0.50
@@ -97,7 +98,7 @@ describe('calculatePricing', () => {
       { platform: 'bybitp2p', ask: 9.35, totalAsk: 500, bid: 9.35, totalBid: 500, time: Date.now() },
     ];
 
-    const config: PricingConfig = { minSpread: 5.0, maxSpread: 10.0, tradeAmountUsdt: 100 };
+    const config: PricingConfig = { minSpread: 5.0, maxSpread: 10.0, tradeAmountUsdt: 100, imbalanceThresholdUsdt: 300 };
     const result = calculatePricing(prices, config);
 
     // market_spread = 0, clamped to minSpread = 5.0

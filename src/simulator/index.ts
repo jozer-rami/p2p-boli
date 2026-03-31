@@ -118,6 +118,7 @@ async function main(): Promise<void> {
     minSpread: parseFloat(args.configOverrides.min_spread ?? '0.015'),
     maxSpread: parseFloat(args.configOverrides.max_spread ?? '0.05'),
     tradeAmountUsdt: parseFloat(args.configOverrides.trade_amount_usdt ?? '300'),
+    imbalanceThresholdUsdt: parseFloat(args.configOverrides.imbalance_threshold_usdt ?? '300'),
   };
 
   const volatilityConfig = {

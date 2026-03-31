@@ -26,7 +26,7 @@ export interface CommandDeps {
 
   // Ad control
   setPaused: (side: Side, paused: boolean) => void;
-  updatePricingConfig: (patch: { minSpread?: number; maxSpread?: number; tradeAmountUsdt?: number }) => void;
+  updatePricingConfig: (patch: { minSpread?: number; maxSpread?: number; tradeAmountUsdt?: number; imbalanceThresholdUsdt?: number }) => void;
 
   // Emergency
   triggerEmergency: (reason: string) => Promise<void>;

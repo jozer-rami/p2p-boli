@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRepricingConfig, useUpdateRepricingConfig, type RepricingConfigData } from '../hooks/useApi';
+import Tip from './Tooltip';
 
 export default function RepricingConfigPanel() {
   const { data, isLoading } = useRepricingConfig();
@@ -74,7 +75,7 @@ export default function RepricingConfigPanel() {
           </div>
           <div className="flex gap-4 mt-1">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Position</span>
+              <span className="text-xs text-text-faint">Position<Tip text="Target rank in the filtered order book. #1 = most competitive (aggressive). #3 = safer margin (conservative)." /></span>
               <input
                 type="number"
                 min={1}
@@ -86,7 +87,7 @@ export default function RepricingConfigPanel() {
               <span className="text-xs text-text-faint">#</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Anti-osc</span>
+              <span className="text-xs text-text-faint">Anti-osc<Tip text="Minimum price change (BOB) to trigger a reprice. Prevents unnecessary API calls when prices barely move." /></span>
               <input
                 type="number"
                 step={0.001}
@@ -104,7 +105,7 @@ export default function RepricingConfigPanel() {
           <span className="text-sm font-medium">Spread Bounds</span>
           <div className="flex gap-4 mt-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Min</span>
+              <span className="text-xs text-text-faint">Min<Tip text="Minimum spread in BOB. If market spread falls below this, the engine pauses ads to protect margins." /></span>
               <input
                 type="number"
                 step={0.001}
@@ -114,7 +115,7 @@ export default function RepricingConfigPanel() {
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Max</span>
+              <span className="text-xs text-text-faint">Max<Tip text="Maximum spread in BOB. Caps ad pricing so you don't price yourself out of the market." /></span>
               <input
                 type="number"
                 step={0.001}
@@ -131,7 +132,7 @@ export default function RepricingConfigPanel() {
           <span className="text-sm font-medium">Competitor Filters</span>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Min amount</span>
+              <span className="text-xs text-text-faint">Min amount<Tip text="Ignore competitor ads with max order below this BOB amount. Filters out micro-ads that serve a different market." /></span>
               <input
                 type="number"
                 className="bg-surface-subtle border border-surface-muted/40 rounded px-2 py-0.5 text-xs text-text w-16 font-num focus:outline-none focus:border-text-faint"
@@ -141,7 +142,7 @@ export default function RepricingConfigPanel() {
               <span className="text-xs text-text-faint">BOB</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Min rate</span>
+              <span className="text-xs text-text-faint">Min rate<Tip text="Only compete against merchants with this completion rate or higher. Filters unreliable traders." /></span>
               <input
                 type="number"
                 className="bg-surface-subtle border border-surface-muted/40 rounded px-2 py-0.5 text-xs text-text w-12 font-num focus:outline-none focus:border-text-faint"
@@ -151,7 +152,7 @@ export default function RepricingConfigPanel() {
               <span className="text-xs text-text-faint">%</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Min orders</span>
+              <span className="text-xs text-text-faint">Min orders<Tip text="Only compete against merchants with this many orders in the last 30 days. Filters inexperienced traders." /></span>
               <input
                 type="number"
                 className="bg-surface-subtle border border-surface-muted/40 rounded px-2 py-0.5 text-xs text-text w-12 font-num focus:outline-none focus:border-text-faint"
@@ -160,7 +161,7 @@ export default function RepricingConfigPanel() {
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Verified</span>
+              <span className="text-xs text-text-faint">Verified<Tip text="Only compete against KYC-verified merchants (authStatus >= 1). Filters anonymous accounts." /></span>
               <button
                 className={`text-xs px-3 py-0.5 rounded transition-colors ${
                   local.filters.verifiedOnly
@@ -173,7 +174,7 @@ export default function RepricingConfigPanel() {
               </button>
             </div>
             <div className="col-span-2 flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Levels</span>
+              <span className="text-xs text-text-faint">Levels<Tip text="Only compete against merchants with these advertiser tags. GA = General, VA = Verified. Comma-separated." /></span>
               <input
                 type="text"
                 className="bg-surface-subtle border border-surface-muted/40 rounded px-2 py-0.5 text-xs text-text w-24 focus:outline-none focus:border-text-faint"

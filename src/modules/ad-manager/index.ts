@@ -64,6 +64,16 @@ export class AdManager {
     ['buy', false],
     ['sell', false],
   ]);
+  /** Cumulative released volume per side (USDT) — for imbalance tracking */
+  private releasedVolume: Map<Side, number> = new Map([
+    ['buy', 0],
+    ['sell', 0],
+  ]);
+  /** Sides paused by the imbalance limiter (separate from manual pause) */
+  private imbalancePaused: Map<Side, boolean> = new Map([
+    ['buy', false],
+    ['sell', false],
+  ]);
 
   constructor(
     bus: EventBus,
@@ -94,9 +104,18 @@ export class AdManager {
     });
 
     // Allow refill only after a confirmed release (you got paid)
-    this.bus.on('order:released', ({ side }) => {
+    // Also track released volume for imbalance detection
+    this.bus.on('order:released', ({ side, amount }) => {
       this.refillAllowed.set(side, true);
-      log.info({ side }, 'Order released — ad refill allowed');
+
+      // Accumulate released volume
+      const prev = this.releasedVolume.get(side) ?? 0;
+      this.releasedVolume.set(side, prev + amount);
+
+      // Check if the opposite side can be unpaused
+      this.checkImbalance();
+
+      log.info({ side, amount, totalReleased: prev + amount }, 'Order released — ad refill allowed');
     });
 
     // Restore ad liquidity on cancelled orders
@@ -346,6 +365,14 @@ export class AdManager {
   async manageSide(side: Side, price: number, shouldPause: boolean): Promise<void> {
     const existing = this.activeAds.get(side);
 
+    // Imbalance limiter overrides — treat as forced pause
+    if (this.imbalancePaused.get(side)) {
+      if (existing) {
+        await this.removeAd(side);
+      }
+      return;
+    }
+
     if (shouldPause) {
       if (existing) {
         await this.removeAd(side);
@@ -427,6 +454,7 @@ export class AdManager {
       };
 
       this.activeAds.set(side, activeAd);
+      this.refillAllowed.set(side, false); // new ad starts at full amount — no stale refill
 
       // Persist to DB
       await this.db.insert(ads).values({
@@ -482,6 +510,46 @@ export class AdManager {
     const sides: Side[] = ['buy', 'sell'];
     for (const side of sides) {
       await this.removeAd(side);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Imbalance limiter
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Checks net exposure and pauses/unpauses sides accordingly.
+   * Net = sellReleased - buyReleased.
+   *   net >  threshold → pause sell (sold too much without buying back)
+   *   net < -threshold → pause buy  (bought too much without selling)
+   *   within range     → unpause both
+   */
+  private checkImbalance(): void {
+    const threshold = this.config.imbalanceThresholdUsdt;
+    if (threshold <= 0) return; // disabled
+
+    const sellVol = this.releasedVolume.get('sell') ?? 0;
+    const buyVol = this.releasedVolume.get('buy') ?? 0;
+    const net = sellVol - buyVol;
+
+    if (net > threshold && !this.imbalancePaused.get('sell')) {
+      this.imbalancePaused.set('sell', true);
+      log.warn({ net, sellVol, buyVol, threshold }, 'Imbalance limit hit — pausing sell side until buy catches up');
+      void this.bus.emit('ad:paused', { side: 'sell' as Side, reason: `Imbalance: sold ${net.toFixed(0)} USDT more than bought (limit ${threshold})` }, MODULE);
+    } else if (net <= threshold && this.imbalancePaused.get('sell')) {
+      this.imbalancePaused.set('sell', false);
+      log.info({ net, sellVol, buyVol }, 'Sell side imbalance resolved — resuming');
+      void this.bus.emit('ad:resumed', { side: 'sell' as Side }, MODULE);
+    }
+
+    if (net < -threshold && !this.imbalancePaused.get('buy')) {
+      this.imbalancePaused.set('buy', true);
+      log.warn({ net, sellVol, buyVol, threshold }, 'Imbalance limit hit — pausing buy side until sell catches up');
+      void this.bus.emit('ad:paused', { side: 'buy' as Side, reason: `Imbalance: bought ${Math.abs(net).toFixed(0)} USDT more than sold (limit ${threshold})` }, MODULE);
+    } else if (net >= -threshold && this.imbalancePaused.get('buy')) {
+      this.imbalancePaused.set('buy', false);
+      log.info({ net, sellVol, buyVol }, 'Buy side imbalance resolved — resuming');
+      void this.bus.emit('ad:resumed', { side: 'buy' as Side }, MODULE);
     }
   }
 
@@ -544,5 +612,15 @@ export class AdManager {
 
   getActiveAds(): Map<Side, ActiveAd> {
     return this.activeAds;
+  }
+
+  getImbalance(): { sellVol: number; buyVol: number; net: number; threshold: number; pausedSide: Side | null } {
+    const sellVol = this.releasedVolume.get('sell') ?? 0;
+    const buyVol = this.releasedVolume.get('buy') ?? 0;
+    const net = sellVol - buyVol;
+    const pausedSide = this.imbalancePaused.get('sell') ? 'sell' as Side
+      : this.imbalancePaused.get('buy') ? 'buy' as Side
+      : null;
+    return { sellVol, buyVol, net, threshold: this.config.imbalanceThresholdUsdt, pausedSide };
   }
 }

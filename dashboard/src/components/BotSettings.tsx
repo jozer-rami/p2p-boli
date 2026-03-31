@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useBotConfig, useUpdateBotConfig, type BotConfigData } from '../hooks/useApi';
+import Tip from './Tooltip';
 
 interface LocalState {
   activeSides: string;
@@ -140,7 +141,7 @@ export default function BotSettingsPanel() {
 
           {/* Active sides */}
           <div className="flex items-center gap-3 mt-3">
-            <span className="text-xs text-text-faint w-24">Active sides</span>
+            <span className="text-xs text-text-faint w-24">Active sides<Tip text="Which sides to post ads on. BUY = buy USDT (pay BOB). SELL = sell USDT (receive BOB). BOTH = market making." /></span>
             <div className="flex gap-1">
               {sidesOptions.map((opt) => (
                 <button
@@ -160,7 +161,7 @@ export default function BotSettingsPanel() {
 
           {/* Trade amount */}
           <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-text-faint w-24">Trade amount</span>
+            <span className="text-xs text-text-faint w-24">Trade amount<Tip text="USDT amount per ad. When quantity drops below 50%, the bot refills to this amount." /></span>
             <div className="flex items-center gap-1.5">
               <input
                 type="number"
@@ -175,7 +176,7 @@ export default function BotSettingsPanel() {
 
           {/* Auto-reprice */}
           <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-text-faint w-24">Auto-reprice</span>
+            <span className="text-xs text-text-faint w-24">Auto-reprice<Tip text="When ON, the repricing engine adjusts ad prices every 30s based on order book analysis. When OFF, prices stay fixed." /></span>
             <button
               className={`text-xs px-3 py-1 rounded transition-colors ${
                 local.repriceEnabled
@@ -190,7 +191,7 @@ export default function BotSettingsPanel() {
 
           {/* Auto-cancel */}
           <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-text-faint w-24">Auto-cancel</span>
+            <span className="text-xs text-text-faint w-24">Auto-cancel<Tip text="Automatically cancel orders if counterparty doesn't pay within this time. Prevents capital lockup." /></span>
             <div className="flex items-center gap-1.5">
               <input
                 type="number"
@@ -250,7 +251,7 @@ export default function BotSettingsPanel() {
           <span className="text-text-faint text-xs ml-2">BOT (UTC-4)</span>
           <div className="flex gap-6 mt-3">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Sleep start</span>
+              <span className="text-xs text-text-faint">Sleep start<Tip text="Hour to pause trading and remove ads. Bolivia time (UTC-4)." /></span>
               <input
                 type="number"
                 min={0}
@@ -262,7 +263,7 @@ export default function BotSettingsPanel() {
               <span className="text-xs text-text-faint">:00</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Sleep end</span>
+              <span className="text-xs text-text-faint">Sleep end<Tip text="Hour to resume trading and recreate ads. Bolivia time (UTC-4)." /></span>
               <input
                 type="number"
                 min={0}
@@ -281,7 +282,7 @@ export default function BotSettingsPanel() {
           <span className="text-sm font-medium">Volatility</span>
           <div className="flex gap-6 mt-3">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Threshold</span>
+              <span className="text-xs text-text-faint">Threshold<Tip text="Price change % that triggers emergency stop. If price moves more than this within the window, all ads are removed." /></span>
               <input
                 type="number"
                 step="any"
@@ -292,7 +293,7 @@ export default function BotSettingsPanel() {
               <span className="text-xs text-text-faint">%</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-faint">Window</span>
+              <span className="text-xs text-text-faint">Window<Tip text="Rolling time window for volatility detection. Price change is measured over this period." /></span>
               <input
                 type="number"
                 step="any"
@@ -317,7 +318,7 @@ export default function BotSettingsPanel() {
           {messagingOpen && (
             <div className="mt-3">
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-text-faint">QR pre-message</span>
+                <span className="text-xs text-text-faint">QR pre-message<Tip text="Text sent to counterparty in Bybit chat before the QR code image on sell orders." /></span>
                 <input
                   type="text"
                   className={inputWide}
@@ -341,7 +342,7 @@ export default function BotSettingsPanel() {
           {pollingOpen && (
             <div className="flex flex-wrap gap-4 mt-3">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-text-faint">Orders</span>
+                <span className="text-xs text-text-faint">Orders<Tip text="How often to check Bybit for new/updated orders. Lower = faster response but more API calls." /></span>
                 <input
                   type="number"
                   className={inputCls}
@@ -351,7 +352,7 @@ export default function BotSettingsPanel() {
                 <span className="text-xs text-text-faint">ms</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-text-faint">Ads</span>
+                <span className="text-xs text-text-faint">Ads<Tip text="How often to run the repricing engine and update ad prices. 30s is standard." /></span>
                 <input
                   type="number"
                   className={inputCls}
@@ -361,7 +362,7 @@ export default function BotSettingsPanel() {
                 <span className="text-xs text-text-faint">ms</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-text-faint">Prices</span>
+                <span className="text-xs text-text-faint">Prices<Tip text="How often to fetch market prices from CriptoYa and Bybit. Also drives volatility detection." /></span>
                 <input
                   type="number"
                   className={inputCls}

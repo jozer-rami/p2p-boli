@@ -109,6 +109,7 @@ const volatilityWindowMinutes = parseFloat(await getConfig('volatility_window_mi
 const minSpread = parseFloat(await getConfig('min_spread'));
 const maxSpread = parseFloat(await getConfig('max_spread'));
 const tradeAmountUsdt = parseFloat(await getConfig('trade_amount_usdt'));
+const imbalanceThresholdUsdt = parseFloat(await getConfig('imbalance_threshold_usdt'));
 const autoCancelTimeoutMs = parseInt(await getConfig('auto_cancel_timeout_ms'), 10);
 const pollIntervalOrdersMs = parseInt(await getConfig('poll_interval_orders_ms'), 10);
 const pollIntervalAdsMs = parseInt(await getConfig('poll_interval_ads_ms'), 10);
@@ -142,7 +143,7 @@ const adManager = new AdManager(
   bus,
   db,
   bybitClient,
-  { minSpread, maxSpread, tradeAmountUsdt },
+  { minSpread, maxSpread, tradeAmountUsdt, imbalanceThresholdUsdt },
   (side, amount) => bankManager.selectAccount({ side, minBalance: amount }),
 );
 
@@ -314,11 +315,13 @@ const telegramBot = new TelegramBot(
         minSpread,
         maxSpread,
         tradeAmountUsdt: firstAd?.amountUsdt ?? tradeAmountUsdt,
+        imbalanceThresholdUsdt,
       };
       adManager.updateConfig({
         minSpread: patch.minSpread ?? current.minSpread,
         maxSpread: patch.maxSpread ?? current.maxSpread,
         tradeAmountUsdt: patch.tradeAmountUsdt ?? current.tradeAmountUsdt,
+        imbalanceThresholdUsdt: patch.imbalanceThresholdUsdt ?? current.imbalanceThresholdUsdt,
       });
     },
 

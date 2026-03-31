@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGuardConfig, useUpdateGuardConfig, type GuardConfig } from '../hooks/useApi';
+import Tip from './Tooltip';
 
 interface GuardRowProps {
   label: string;
@@ -118,7 +119,7 @@ export default function GuardConfigPanel() {
       <div className="flex flex-col gap-2">
         <GuardRow
           label="Gap Guard"
-          description="Detects price jumps after data outages"
+          description="Triggers emergency stop if price jumps sharply when data resumes after an outage"
           enabled={local.gapGuardEnabled}
           onToggle={(v) => update({ gapGuardEnabled: v })}
           pending={updateGuards.isPending}
@@ -132,7 +133,7 @@ export default function GuardConfigPanel() {
 
         <GuardRow
           label="Depth Guard"
-          description="Pauses when order book is too thin"
+          description="Triggers emergency stop when total order book liquidity drops below minimum USDT"
           enabled={local.depthGuardEnabled}
           onToggle={(v) => update({ depthGuardEnabled: v })}
           pending={updateGuards.isPending}
@@ -146,7 +147,7 @@ export default function GuardConfigPanel() {
 
         <GuardRow
           label="Session Drift"
-          description="Catches gradual price drift from session start"
+          description="Triggers emergency stop when cumulative price drift from session start exceeds threshold"
           enabled={local.sessionDriftGuardEnabled}
           onToggle={(v) => update({ sessionDriftGuardEnabled: v })}
           pending={updateGuards.isPending}
