@@ -14,6 +14,13 @@ const FORWARDED_EVENTS: (keyof EventMap)[] = [
   'ad:repriced',
   'emergency:triggered',
   'emergency:resolved',
+  'ad:paused',
+  'ad:resumed',
+  'ad:spread-inversion',
+  'reprice:cycle',
+  'price:stale',
+  'price:spread-alert',
+  'price:low-depth',
 ];
 
 export class WebSocketBroadcaster {
