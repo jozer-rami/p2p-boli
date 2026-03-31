@@ -77,15 +77,15 @@ function getConfigSync(key: string): string {
   return row?.value ?? (DEFAULT_CONFIG as Record<string, string>)[key] ?? '';
 }
 
-/** Synchronous config write — uses the underlying SQLite driver directly */
+/** Synchronous config write */
 function setConfigSync(key: string, value: string): void {
-  void db
-    .insert(schema.config)
+  db.insert(schema.config)
     .values({ key, value, updatedAt: new Date().toISOString() })
     .onConflictDoUpdate({
       target: schema.config.key,
       set: { value, updatedAt: new Date().toISOString() },
-    });
+    })
+    .run();
 }
 
 // ---------------------------------------------------------------------------
