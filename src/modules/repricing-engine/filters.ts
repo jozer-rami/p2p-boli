@@ -13,7 +13,7 @@ export function applyFilters(
     if (ad.userId === selfUserId) return false;
     if (ad.price < PRICE_FLOOR || ad.price > PRICE_CEILING) return false;
     if (ad.maxAmount < filters.minOrderAmount) return false;
-    if (filters.verifiedOnly && ad.authStatus !== 2) return false;
+    if (filters.verifiedOnly && ad.authStatus < 1) return false;  // authStatus: 1=basic KYC, 2=full KYC
     if (ad.recentExecuteRate < filters.minCompletionRate) return false;
     if (ad.recentOrderNum < filters.minOrderCount) return false;
     if (filters.merchantLevels.length > 0) {

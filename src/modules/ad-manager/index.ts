@@ -133,7 +133,9 @@ export class AdManager {
           sell: this.activeAds.get('sell')?.price ?? null,
         };
 
+        log.info({ currentPrices }, 'Running repricing engine cycle');
         const result = await this.engine.reprice(currentPrices);
+        log.info({ action: result.action, buyPrice: result.buyPrice, sellPrice: result.sellPrice, spread: result.spread, position: result.position, reason: result.reason }, 'Repricing engine result');
 
         // Phase 12 — LOG: emit event
         await this.bus.emit('reprice:cycle', {
