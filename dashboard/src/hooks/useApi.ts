@@ -409,3 +409,35 @@ export function useDisputeOrder() {
     },
   });
 }
+
+export interface OperationsData {
+  imbalance: {
+    sellVol: number;
+    buyVol: number;
+    net: number;
+    threshold: number;
+    pausedSide: 'buy' | 'sell' | null;
+  };
+  ads: {
+    sell: { price: number; amountUsdt: number } | null;
+    buy: { price: number; amountUsdt: number } | null;
+  };
+  repricing: {
+    action: 'reprice' | 'hold' | 'pause';
+    buyPrice: number;
+    sellPrice: number;
+    spread: number;
+    position: { buy: number; sell: number };
+    filteredCompetitors: { buy: number; sell: number };
+    mode: string;
+    reason: string;
+  } | null;
+}
+
+export function useOperations() {
+  return useQuery({
+    queryKey: ['operations'],
+    queryFn: () => fetchJson<OperationsData>('/api/operations'),
+    refetchInterval: 5_000,
+  });
+}

@@ -65,6 +65,19 @@ export function useWebSocket() {
             queryClient.invalidateQueries({ queryKey: ['status'] });
           }
 
+          // Operations view: invalidate + dispatch for activity log
+          if (
+            msg.event.startsWith('ad:') ||
+            msg.event.startsWith('reprice:') ||
+            msg.event === 'price:stale' ||
+            msg.event === 'price:spread-alert' ||
+            msg.event === 'price:low-depth' ||
+            msg.event === 'order:released'
+          ) {
+            queryClient.invalidateQueries({ queryKey: ['operations'] });
+            window.dispatchEvent(new CustomEvent('ops:event', { detail: msg }));
+          }
+
           if (msg.event === 'order:payment-claimed') {
             const p = msg.payload;
             playPing();
