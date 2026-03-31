@@ -79,19 +79,23 @@ export class RepricingEngine {
 
     // ── Phase 3: SPREAD ─────────────────────────────────────────────────────
     // Check market spread: null or below minSpread triggers pause.
+    // In P2P, bid > ask (negative spread) is an inversion = profit opportunity,
+    // not a problem. Use absolute spread to measure available room.
     {
       const t = Date.now();
-      const spread = checkSpread(this.filteredSell, this.filteredBuy);
+      const rawSpread = checkSpread(this.filteredSell, this.filteredBuy);
+      const effectiveSpread = rawSpread !== null ? Math.abs(rawSpread) : null;
+      const inverted = rawSpread !== null && rawSpread < 0;
 
-      if (spread === null || spread < this.config.minSpread) {
-        trace(3, 'SPREAD', `spread=${spread} < minSpread=${this.config.minSpread}`, t);
+      if (effectiveSpread === null || effectiveSpread < this.config.minSpread) {
+        trace(3, 'SPREAD', `effective=${effectiveSpread} < minSpread=${this.config.minSpread}`, t);
         return this.pauseResult(
-          `spread too tight: ${spread} < ${this.config.minSpread}`,
+          `spread too tight: ${effectiveSpread} < ${this.config.minSpread}`,
           phases,
           excludedAggressive,
         );
       }
-      trace(3, 'SPREAD', `spread=${spread}`, t);
+      trace(3, 'SPREAD', `effective=${effectiveSpread}${inverted ? ' (inverted — favorable)' : ''}`, t);
     }
 
     // ── Phase 4: VOLUME ─────────────────────────────────────────────────────

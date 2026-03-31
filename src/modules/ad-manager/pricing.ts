@@ -40,7 +40,9 @@ export function calculatePricing(
   }
 
   const mid = (ask + bid) / 2;
-  const marketSpread = ask - bid;
+  // In P2P, bid > ask (inversion) is a profit opportunity.
+  // Use absolute spread to measure available room.
+  const marketSpread = Math.abs(ask - bid);
   const targetSpread = clamp(marketSpread, config.minSpread, config.maxSpread);
 
   const buyPrice = round3(mid - targetSpread / 2);
