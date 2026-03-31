@@ -1,0 +1,17 @@
+node_modules
+dashboard/node_modules
+dashboard/dist
+data
+.git
+.env
+.env.local
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.log
+tests
+docs
+.claude
+.superpowers
+p2p-trader
