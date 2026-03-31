@@ -13,6 +13,7 @@ import { createBanksRouter } from './routes/banks.js';
 import { createSimulateRouter } from './routes/simulate.js';
 import { createConfigRouter } from './routes/config.js';
 import { createRepricingRouter } from './routes/repricing.js';
+import { createBotConfigRouter } from './routes/bot-config.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { EventBus } from '../event-bus.js';
 import type { DB } from '../db/index.js';
@@ -33,6 +34,8 @@ export interface ApiDeps {
   bybitUserId: string;
   qrPreMessage: string;
   repricingEngine: RepricingEngine;
+  getConfig: (key: string) => string;
+  setConfig: (key: string, value: string) => void;
 }
 
 export function createApiServer(deps: ApiDeps) {
@@ -68,6 +71,14 @@ export function createApiServer(deps: ApiDeps) {
     priceMonitor: deps.priceMonitor,
   }));
   app.use('/api', createRepricingRouter({ engine: deps.repricingEngine }));
+  app.use('/api', createBotConfigRouter({
+    getConfig: deps.getConfig,
+    setConfig: deps.setConfig,
+    adManager: deps.adManager,
+    orderHandler: deps.orderHandler,
+    priceMonitor: deps.priceMonitor,
+    emergencyStop: deps.emergencyStop,
+  }));
 
   // Serve built React dashboard in production
   const __dirname = dirname(fileURLToPath(import.meta.url));
