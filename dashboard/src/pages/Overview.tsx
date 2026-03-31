@@ -2,6 +2,8 @@ import { useStatus, useOrders } from '../hooks/useApi';
 import OrderRow from '../components/OrderRow';
 import BankQrManager from '../components/BankQrManager';
 import GuardConfigPanel from '../components/GuardConfig';
+import RepricingStatus from '../components/RepricingStatus';
+import RepricingConfigPanel from '../components/RepricingConfig';
 
 export default function Overview() {
   const { data: status, isLoading } = useStatus();
@@ -16,6 +18,7 @@ export default function Overview() {
 
   return (
     <div>
+      <RepricingStatus />
       <div className="flex items-baseline gap-8 mb-8">
         <div>
           <span className={`text-sm font-semibold ${s.botState === 'running' ? 'text-green-500' : 'text-red-500'}`}>
@@ -71,6 +74,7 @@ export default function Overview() {
             <h2 className="text-xs uppercase text-text-faint tracking-wide mb-3">Bank Accounts</h2>
             <BankQrManager />
           </div>
+          <RepricingConfigPanel />
           <GuardConfigPanel />
         </div>
       </div>

@@ -217,6 +217,92 @@ export function useReleaseOrder() {
   });
 }
 
+// Repricing engine
+export interface RepricingStatus {
+  action: 'reprice' | 'hold' | 'pause' | 'none';
+  buyPrice: number;
+  sellPrice: number;
+  spread: number;
+  position: { buy: number; sell: number };
+  filteredCompetitors: { buy: number; sell: number };
+  mode: string;
+  reason: string;
+  excludedAggressive?: Array<{ side: string; nickName: string; price: number; gap: number }>;
+}
+
+export interface RepricingConfigData {
+  mode: 'conservative' | 'aggressive';
+  targetPosition: number;
+  antiOscillationThreshold: number;
+  minSpread: number;
+  maxSpread: number;
+  filters: {
+    minOrderAmount: number;
+    verifiedOnly: boolean;
+    minCompletionRate: number;
+    minOrderCount: number;
+    merchantLevels: string[];
+  };
+}
+
+export interface OrderBookEntry {
+  rank: number;
+  price: number;
+  quantity: number;
+  nickName: string;
+  completionRate: number;
+  orders: number;
+}
+
+export interface OrderBookData {
+  sell: OrderBookEntry[];
+  buy: OrderBookEntry[];
+  excludedAggressive: Array<{ side: string; nickName: string; price: number; gap: number }>;
+  totalFiltered: { sell: number; buy: number };
+}
+
+export function useRepricingStatus() {
+  return useQuery({
+    queryKey: ['repricingStatus'],
+    queryFn: () => fetchJson<RepricingStatus>('/api/repricing/status'),
+    refetchInterval: 10_000,
+  });
+}
+
+export function useRepricingOrderbook() {
+  return useQuery({
+    queryKey: ['repricingOrderbook'],
+    queryFn: () => fetchJson<OrderBookData>('/api/repricing/orderbook'),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useRepricingConfig() {
+  return useQuery({
+    queryKey: ['repricingConfig'],
+    queryFn: () => fetchJson<RepricingConfigData>('/api/repricing/config'),
+  });
+}
+
+export function useUpdateRepricingConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (updates: Record<string, any>) => {
+      const res = await fetch('/api/repricing/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update repricing config');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['repricingConfig'] });
+      queryClient.invalidateQueries({ queryKey: ['repricingStatus'] });
+    },
+  });
+}
+
 // Guard config
 export interface GuardConfig {
   gapGuardEnabled: boolean;

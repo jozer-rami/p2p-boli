@@ -7,6 +7,7 @@ import ChatSidebar from './components/ChatSidebar';
 import Overview from './pages/Overview';
 import ReleasePanel from './pages/ReleasePanel';
 import TradeHistory from './pages/TradeHistory';
+import Market from './pages/Market';
 
 function SmartHome() {
   const { data: orders } = useOrders();
@@ -31,6 +32,7 @@ function AppContent() {
         <div className="flex items-center gap-4">
           <span className="text-sm font-semibold tracking-wide uppercase text-text-muted mr-2">Boli</span>
           <NavLink to="/" className={linkClass} end>Overview</NavLink>
+          <NavLink to="/market" className={linkClass}>Market</NavLink>
           <NavLink to="/trades" className={linkClass}>Trades</NavLink>
         </div>
         <ConnectionStatus connected={connected} />
@@ -44,6 +46,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<SmartHome />} />
           <Route path="/order/:id" element={<ReleasePanel />} />
+          <Route path="/market" element={<Market />} />
           <Route path="/trades" element={<TradeHistory />} />
         </Routes>
       </main>
