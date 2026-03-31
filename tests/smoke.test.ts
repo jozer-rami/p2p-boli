@@ -7,10 +7,13 @@ import { BankManager } from '../src/modules/bank-manager/index.js';
 import { EmergencyStop } from '../src/modules/emergency-stop/index.js';
 import { calculatePricing } from '../src/modules/ad-manager/pricing.js';
 import { ChatRelay } from '../src/modules/chat-relay/index.js';
+import { RepricingEngine } from '../src/modules/repricing-engine/index.js';
+import { DEFAULT_FILTERS } from '../src/modules/repricing-engine/types.js';
 import type { CriptoYaClient } from '../src/modules/price-monitor/criptoya.js';
 import type { EmergencyDeps } from '../src/modules/emergency-stop/index.js';
 import type { DB } from '../src/db/index.js';
 import type { PlatformPrices } from '../src/event-bus.js';
+import type { OrderBookAd } from '../src/bybit/types.js';
 
 let db: DB;
 let close: () => void;
@@ -228,5 +231,45 @@ describe('Smoke Tests — End-to-End Event Flow', () => {
     expect(stored.amount).toBe(500);
     expect(stored.price).toBe(9.45);
     expect(stored.counterparty).toBe('trader_xyz');
+  });
+
+  it('repricing engine runs 12-phase pipeline and returns valid result', async () => {
+    const makeSellAd = (price: number, nick: string): OrderBookAd => ({
+      id: `s-${price}`, side: 'sell', price, quantity: 500, minAmount: 10, maxAmount: 5000,
+      nickName: nick, userId: `u-${nick}`, recentOrderNum: 50, recentExecuteRate: 95,
+      authTag: ['GA'], authStatus: 2, isOnline: true, userType: 'PERSONAL',
+    });
+    const makeBuyAd = (price: number, nick: string): OrderBookAd => ({
+      id: `b-${price}`, side: 'buy', price, quantity: 500, minAmount: 10, maxAmount: 5000,
+      nickName: nick, userId: `u-${nick}`, recentOrderNum: 50, recentExecuteRate: 95,
+      authTag: ['GA'], authStatus: 2, isOnline: true, userType: 'PERSONAL',
+    });
+
+    const engine = new RepricingEngine(
+      {
+        mode: 'conservative',
+        targetPosition: 3,
+        antiOscillationThreshold: 0.003,
+        minSpread: 0.010,
+        maxSpread: 0.050,
+        filters: DEFAULT_FILTERS,
+        selfUserId: 'self',
+      },
+      async () => ({
+        sell: [makeSellAd(9.343, 'a'), makeSellAd(9.344, 'b'), makeSellAd(9.345, 'c'), makeSellAd(9.346, 'd')],
+        buy: [makeBuyAd(9.330, 'e'), makeBuyAd(9.328, 'f'), makeBuyAd(9.325, 'g')],
+      }),
+    );
+
+    const result = await engine.reprice({ buy: null, sell: null });
+
+    expect(result.action).toBe('reprice');
+    expect(result.buyPrice).toBeGreaterThan(0);
+    expect(result.sellPrice).toBeGreaterThan(result.buyPrice);
+    expect(result.spread).toBeGreaterThanOrEqual(0.010);
+    expect(result.position.sell).toBeGreaterThan(0);
+    expect(result.position.buy).toBeGreaterThan(0);
+    expect(result.phases.length).toBeGreaterThan(0);
+    expect(result.mode).toBe('conservative');
   });
 });
