@@ -548,6 +548,7 @@ async function start(): Promise<void> {
     getTodayProfit,
     bybitUserId: envConfig.bybit.userId,
     qrPreMessage,
+    dryRun: envConfig.dryRun,
     repricingEngine,
     getConfig: (key: string) => getConfigSync(key),
     setConfig: (key: string, value: string) => setConfigSync(key, value),

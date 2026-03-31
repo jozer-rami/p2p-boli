@@ -1,6 +1,6 @@
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { useWebSocket } from './hooks/useWebSocket';
-import { useOrders } from './hooks/useApi';
+import { useOrders, useStatus } from './hooks/useApi';
 import { ChatSidebarProvider, useChatSidebar } from './hooks/useChatSidebar';
 import ConnectionStatus from './components/ConnectionStatus';
 import ChatSidebar from './components/ChatSidebar';
@@ -23,6 +23,8 @@ function SmartHome() {
 function AppContent() {
   const { connected } = useWebSocket();
   const { openOrderId, closeChat } = useChatSidebar();
+  const { data: status } = useStatus();
+  const dryRun = (status as any)?.dryRun ?? false;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `px-3 py-1.5 text-sm ${isActive ? 'text-text' : 'text-text-faint hover:text-text-muted'}`;
@@ -39,6 +41,11 @@ function AppContent() {
         </div>
         <ConnectionStatus connected={connected} />
       </nav>
+      {dryRun && (
+        <div className="bg-blue-900/30 text-blue-200 text-sm px-6 py-2">
+          DRY RUN MODE — no real trades will be executed
+        </div>
+      )}
       {!connected && (
         <div className="bg-amber-900/30 text-amber-200 text-sm px-6 py-2">
           Dashboard disconnected from bot — data may be stale. Reconnecting...

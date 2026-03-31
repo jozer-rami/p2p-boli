@@ -9,6 +9,7 @@ export interface StatusResponse {
   bankAccounts: Array<{ id: number; name: string; balanceBob: number; status: string }>;
   todayProfit: { tradesCount: number; profitBob: number; volumeUsdt: number };
   bybitUserId: string;
+  dryRun: boolean;
 }
 
 export interface OrderResponse {

@@ -11,6 +11,7 @@ export interface StatusDeps {
   bankManager: { getAccounts: () => Array<{ id: number; name: string; balanceBob: number; status: string }> };
   getTodayProfit: () => Promise<{ tradesCount: number; profitBob: number; volumeUsdt: number }>;
   bybitUserId: string;
+  dryRun: boolean;
 }
 
 export function createStatusRouter(deps: StatusDeps): Router {
@@ -39,6 +40,7 @@ export function createStatusRouter(deps: StatusDeps): Router {
       })),
       todayProfit: await deps.getTodayProfit(),
       bybitUserId: deps.bybitUserId,
+      dryRun: deps.dryRun,
     };
 
     res.json(response);

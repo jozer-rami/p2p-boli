@@ -34,6 +34,7 @@ export interface ApiDeps {
   getTodayProfit: () => Promise<{ tradesCount: number; profitBob: number; volumeUsdt: number }>;
   bybitUserId: string;
   qrPreMessage: string;
+  dryRun: boolean;
   repricingEngine: RepricingEngine;
   getConfig: (key: string) => string;
   setConfig: (key: string, value: string) => void;
@@ -53,6 +54,7 @@ export function createApiServer(deps: ApiDeps) {
     bankManager: deps.bankManager,
     getTodayProfit: deps.getTodayProfit,
     bybitUserId: deps.bybitUserId,
+    dryRun: deps.dryRun,
   }));
   app.use('/api', createOrdersRouter({
     orderHandler: deps.orderHandler,
