@@ -151,6 +151,22 @@ export class TelegramBot {
       void this.send(`▶️ Trading resumed (${payload.side.toUpperCase()}) — market spread recovered`);
     });
 
+    let lastPosition = { buy: 0, sell: 0 };
+
+    this.bus.on('reprice:cycle', (payload) => {
+      const buyShift = Math.abs(payload.position.buy - lastPosition.buy);
+      const sellShift = Math.abs(payload.position.sell - lastPosition.sell);
+
+      if ((buyShift >= 2 || sellShift >= 2) && payload.action === 'reprice') {
+        void this.send(
+          `📊 Position: SELL #${payload.position.sell} BUY #${payload.position.buy} | ` +
+          `Spread: ${payload.spread.toFixed(3)} BOB | Mode: ${payload.mode}`
+        );
+      }
+
+      lastPosition = { ...payload.position };
+    });
+
     this.bus.on('order:new', (payload) => {
       const text = formatOrderNew(payload);
       const keyboard = payload.side === 'sell'

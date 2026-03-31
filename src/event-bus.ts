@@ -75,6 +75,18 @@ export interface EventMap {
   'telegram:chat-reply': { orderId: string; text?: string; photoPath?: string };
   'chat:message-received': { orderId: string; from: string; content: string; contentType: string };
   'chat:message-sent': { orderId: string; content: string };
+
+  // Repricing engine events
+  'reprice:cycle': {
+    action: 'reprice' | 'hold' | 'pause';
+    buyPrice: number;
+    sellPrice: number;
+    spread: number;
+    position: { buy: number; sell: number };
+    filteredCompetitors: { buy: number; sell: number };
+    mode: string;
+    reason: string;
+  };
 }
 
 type Handler<T> = (payload: T) => void | Promise<void>;
