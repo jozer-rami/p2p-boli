@@ -34,13 +34,25 @@ export function createOperationsRouter(deps: OperationsDeps): Router {
     const sellAd = activeAds.get('sell');
     const buyAd = activeAds.get('buy');
 
+    const rp = deps.getLastRepricingResult();
+    const repricing = rp ? {
+      action: rp.action,
+      buyPrice: rp.buyPrice,
+      sellPrice: rp.sellPrice,
+      spread: rp.spread,
+      position: rp.position,
+      filteredCompetitors: rp.filteredCompetitors,
+      mode: rp.mode,
+      reason: rp.reason,
+    } : null;
+
     res.json({
       imbalance,
       ads: {
         sell: sellAd ? { price: sellAd.price, amountUsdt: sellAd.amountUsdt } : null,
         buy: buyAd ? { price: buyAd.price, amountUsdt: buyAd.amountUsdt } : null,
       },
-      repricing: deps.getLastRepricingResult(),
+      repricing,
     });
   });
 
