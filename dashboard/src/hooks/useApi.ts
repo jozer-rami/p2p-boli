@@ -303,6 +303,60 @@ export function useUpdateRepricingConfig() {
   });
 }
 
+// Bot config
+export interface BotConfigData {
+  trading: {
+    activeSides: string;
+    tradeAmountUsdt: number;
+    repriceEnabled: boolean;
+    autoCancelTimeoutMs: number;
+  };
+  schedule: {
+    sleepStartHour: number;
+    sleepEndHour: number;
+  };
+  volatility: {
+    thresholdPercent: number;
+    windowMinutes: number;
+  };
+  messaging: {
+    qrPreMessage: string;
+  };
+  polling: {
+    ordersMs: number;
+    adsMs: number;
+    pricesMs: number;
+  };
+  botState: string;
+}
+
+export function useBotConfig() {
+  return useQuery({
+    queryKey: ['botConfig'],
+    queryFn: () => fetchJson<BotConfigData>('/api/config/bot'),
+    refetchInterval: 10_000,
+  });
+}
+
+export function useUpdateBotConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (updates: Record<string, any>) => {
+      const res = await fetch('/api/config/bot', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update bot config');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['botConfig'] });
+      queryClient.invalidateQueries({ queryKey: ['status'] });
+    },
+  });
+}
+
 // Guard config
 export interface GuardConfig {
   gapGuardEnabled: boolean;
