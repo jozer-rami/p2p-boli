@@ -10,10 +10,12 @@ const ticks: ScenarioTick[] = [
 
 export default defineScenario({
   name: 'spread-inversion',
-  description: 'Bid crosses above ask over 3 ticks',
+  description: 'Bid crosses above ask over 3 ticks — P2P inversion is a profit opportunity',
   tickIntervalMs: 30_000,
   ticks,
   expect: {
-    emergencyTriggered: true,
+    // In P2P, inversions are profitable — bot should keep trading, not emergency stop
+    emergencyTriggered: false,
+    spreadNeverBelow: 0.015,
   },
 });

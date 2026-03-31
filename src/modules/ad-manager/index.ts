@@ -182,7 +182,7 @@ export class AdManager {
     // Check live Bybit order book spread before pricing
     try {
       const marketSpread = await this.checkBybitMarketSpread();
-      if (marketSpread !== null && marketSpread < this.config.minSpread) {
+      if (marketSpread !== null && Math.abs(marketSpread) < this.config.minSpread) {
         if (!this.waitingForSpread) {
           this.waitingForSpread = true;
           const reason = `Market spread too thin (${marketSpread.toFixed(4)} BOB < min ${this.config.minSpread})`;
@@ -264,7 +264,7 @@ export class AdManager {
   getCurrentPrices(): { buyPrice: number; sellPrice: number; spread: number } | null {
     if (this.lastBybitAsk === 0 || this.lastBybitBid === 0) return null;
     const mid = (this.lastBybitAsk + this.lastBybitBid) / 2;
-    const spread = this.lastBybitAsk - this.lastBybitBid;
+    const spread = Math.abs(this.lastBybitAsk - this.lastBybitBid);
     const targetSpread = Math.max(this.config.minSpread, Math.min(this.config.maxSpread, spread));
     return {
       buyPrice: Math.round((mid - targetSpread / 2) * 1000) / 1000,

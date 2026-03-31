@@ -52,15 +52,17 @@ describe('simulator smoke tests', () => {
     expect(result.timeline.length).toBe(scenario.ticks.length);
   });
 
-  it('runs spread-inversion and detects the inversion', () => {
+  it('runs spread-inversion and keeps trading (P2P inversion is profitable)', () => {
     const scenario = getScenario('spread-inversion')!;
     const config = { minSpread: 0.015, maxSpread: 0.05, tradeAmountUsdt: 300 };
     const volConfig = { volatilityThresholdPercent: 2, volatilityWindowMinutes: 5 };
 
     const result = runUnit(scenario, config, volConfig);
 
-    // Should have paused entries where bid > ask
-    const pausedTicks = result.timeline.filter((t) => t.paused);
-    expect(pausedTicks.length).toBeGreaterThan(0);
+    // Inversions are profit opportunities — bot should NOT pause
+    expect(result.summary.emergencyTriggered).toBe(false);
+    // All ticks should have valid pricing
+    const pricedTicks = result.timeline.filter((t) => t.buyPrice !== null);
+    expect(pricedTicks.length).toBe(scenario.ticks.length);
   });
 });
