@@ -2,7 +2,7 @@ import { useStatus, useOrders } from '../hooks/useApi';
 import OrderRow from '../components/OrderRow';
 import BankQrManager from '../components/BankQrManager';
 import GuardConfigPanel from '../components/GuardConfig';
-import RepricingStatus from '../components/RepricingStatus';
+import OperationsStrip from '../components/OperationsStrip';
 import RepricingConfigPanel from '../components/RepricingConfig';
 import BotSettingsPanel from '../components/BotSettings';
 
@@ -19,7 +19,7 @@ export default function Overview() {
 
   return (
     <div>
-      <RepricingStatus />
+      <OperationsStrip />
       <div className="flex items-baseline gap-8 mb-8">
         <div>
           <span className={`text-sm font-semibold ${s.botState === 'running' ? 'text-green-500' : 'text-red-500'}`}>

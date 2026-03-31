@@ -8,6 +8,7 @@ import Overview from './pages/Overview';
 import ReleasePanel from './pages/ReleasePanel';
 import TradeHistory from './pages/TradeHistory';
 import Market from './pages/Market';
+import Operations from './pages/Operations';
 
 function SmartHome() {
   const { data: orders } = useOrders();
@@ -34,6 +35,7 @@ function AppContent() {
           <NavLink to="/" className={linkClass} end>Overview</NavLink>
           <NavLink to="/market" className={linkClass}>Market</NavLink>
           <NavLink to="/trades" className={linkClass}>Trades</NavLink>
+          <NavLink to="/operations" className={linkClass}>Operations</NavLink>
         </div>
         <ConnectionStatus connected={connected} />
       </nav>
@@ -48,6 +50,7 @@ function AppContent() {
           <Route path="/order/:id" element={<ReleasePanel />} />
           <Route path="/market" element={<Market />} />
           <Route path="/trades" element={<TradeHistory />} />
+          <Route path="/operations" element={<Operations />} />
         </Routes>
       </main>
 
