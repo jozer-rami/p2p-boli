@@ -14,6 +14,7 @@ import { createSimulateRouter } from './routes/simulate.js';
 import { createConfigRouter } from './routes/config.js';
 import { createRepricingRouter } from './routes/repricing.js';
 import { createBotConfigRouter } from './routes/bot-config.js';
+import { createOperationsRouter } from './routes/operations.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { EventBus } from '../event-bus.js';
 import type { DB } from '../db/index.js';
@@ -36,6 +37,7 @@ export interface ApiDeps {
   repricingEngine: RepricingEngine;
   getConfig: (key: string) => string;
   setConfig: (key: string, value: string) => void;
+  getLastRepricingResult: () => any;
 }
 
 export function createApiServer(deps: ApiDeps) {
@@ -78,6 +80,10 @@ export function createApiServer(deps: ApiDeps) {
     orderHandler: deps.orderHandler,
     priceMonitor: deps.priceMonitor,
     emergencyStop: deps.emergencyStop,
+  }));
+  app.use('/api', createOperationsRouter({
+    adManager: deps.adManager,
+    getLastRepricingResult: deps.getLastRepricingResult,
   }));
 
   // Serve built React dashboard in production

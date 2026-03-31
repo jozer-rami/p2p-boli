@@ -530,6 +530,12 @@ async function start(): Promise<void> {
   chatRelay.start(10_000); // 10s chat polling
 
   // 7. Start dashboard API server
+  // Cache latest reprice:cycle result for operations API
+  let lastRepricingResult: any = null;
+  bus.on('reprice:cycle', (payload) => {
+    lastRepricingResult = payload;
+  });
+
   const apiServer = createApiServer({
     bus,
     db,
@@ -545,6 +551,7 @@ async function start(): Promise<void> {
     repricingEngine,
     getConfig: (key: string) => getConfigSync(key),
     setConfig: (key: string, value: string) => setConfigSync(key, value),
+    getLastRepricingResult: () => lastRepricingResult,
   });
   apiServer.listen(envConfig.dashboard.port, () => {
     log.info({ port: envConfig.dashboard.port }, 'Dashboard API server started');
