@@ -56,6 +56,9 @@ export class AdManager {
   private lastBybitAsk = 0;
   private lastBybitBid = 0;
   private engine: RepricingEngine | null = null;
+  private tickCount = 0;
+  /** How often (in ticks) to fully sync ad amounts from Bybit */
+  private readonly syncEveryNTicks = 5;
 
   constructor(
     bus: EventBus,
@@ -73,6 +76,23 @@ export class AdManager {
     // Subscribe to live price updates
     this.bus.on('price:updated', ({ prices }) => {
       this.latestPrices = prices;
+    });
+
+    // Track ad liquidity: subtract filled amount on new orders
+    this.bus.on('order:new', ({ side, amount }) => {
+      const ad = this.activeAds.get(side);
+      if (ad) {
+        const prev = ad.amountUsdt;
+        ad.amountUsdt = Math.max(0, ad.amountUsdt - amount);
+        log.info({ side, orderId: 'n/a', orderAmount: amount, prev, remaining: ad.amountUsdt }, 'Ad liquidity reduced by new order');
+      }
+    });
+
+    // Restore ad liquidity on cancelled orders
+    this.bus.on('order:cancelled', ({ orderId }) => {
+      // We don't know the side/amount from the event — schedule a full sync next tick
+      this.tickCount = this.syncEveryNTicks;
+      log.debug({ orderId }, 'Order cancelled — will sync ad amounts next tick');
     });
   }
 
@@ -120,11 +140,46 @@ export class AdManager {
     }
   }
 
+  /**
+   * Refreshes ad amounts from Bybit's lastQuantity to correct any drift
+   * between local tracking and the actual remaining amount on the platform.
+   */
+  private async syncAdAmounts(): Promise<void> {
+    try {
+      const bybitAds = await this.bybit.getPersonalAds();
+
+      for (const ad of bybitAds) {
+        const s = String(ad.status);
+        if (s !== '1' && s !== 'active' && s !== '10') continue;
+
+        const existing = this.activeAds.get(ad.side);
+        if (!existing || existing.bybitAdId !== ad.id) continue;
+
+        if (Math.abs(existing.amountUsdt - ad.amount) > 0.01) {
+          log.info(
+            { side: ad.side, local: existing.amountUsdt, bybit: ad.amount },
+            'Ad amount synced from Bybit',
+          );
+          existing.amountUsdt = ad.amount;
+        }
+      }
+    } catch (err) {
+      log.warn({ err }, 'Failed to sync ad amounts from Bybit — will retry next cycle');
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Main loop
   // ---------------------------------------------------------------------------
 
   async tick(): Promise<void> {
+    // Periodic sync: refresh ad amounts from Bybit every N ticks
+    this.tickCount++;
+    if (this.tickCount >= this.syncEveryNTicks) {
+      this.tickCount = 0;
+      await this.syncAdAmounts();
+    }
+
     // If engine is set, delegate to it
     if (this.engine) {
       try {

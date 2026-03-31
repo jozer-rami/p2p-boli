@@ -22,6 +22,7 @@ export interface BotConfigDeps {
   };
   emergencyStop: {
     getState: () => string;
+    setState: (state: 'running' | 'paused' | 'emergency') => void;
     trigger: (type: string, reason: string) => void;
     resolve: (by: string) => void;
   };
@@ -146,9 +147,11 @@ export function createBotConfigRouter(deps: BotConfigDeps): Router {
       if (body.botState !== undefined) {
         deps.setConfig('bot_state', String(body.botState));
         if (body.botState === 'paused') {
+          deps.emergencyStop.setState('paused');
           deps.adManager.setPaused('buy', true);
           deps.adManager.setPaused('sell', true);
         } else if (body.botState === 'running') {
+          deps.emergencyStop.setState('running');
           deps.adManager.setPaused('buy', false);
           deps.adManager.setPaused('sell', false);
           if (deps.emergencyStop.getState() === 'emergency') {
