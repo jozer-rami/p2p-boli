@@ -60,7 +60,12 @@ export default function RepricingConfigPanel() {
                         : 'bg-green-600/20 text-green-400'
                       : 'bg-surface-muted/40 text-text-faint hover:text-text-muted'
                   }`}
-                  onClick={() => patch({ mode: m })}
+                  onClick={() => {
+                    const presets = m === 'aggressive'
+                      ? { targetPosition: 1, antiOscillationThreshold: 0.001 }
+                      : { targetPosition: 3, antiOscillationThreshold: 0.003 };
+                    patch({ mode: m, ...presets });
+                  }}
                 >
                   {m}
                 </button>

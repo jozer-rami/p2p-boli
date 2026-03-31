@@ -59,6 +59,11 @@ export class AdManager {
   private tickCount = 0;
   /** How often (in ticks) to fully sync ad amounts from Bybit */
   private readonly syncEveryNTicks = 5;
+  /** Tracks whether a refill is allowed per side (only after a confirmed release) */
+  private refillAllowed: Map<Side, boolean> = new Map([
+    ['buy', false],
+    ['sell', false],
+  ]);
 
   constructor(
     bus: EventBus,
@@ -86,6 +91,12 @@ export class AdManager {
         ad.amountUsdt = Math.max(0, ad.amountUsdt - amount);
         log.info({ side, orderId: 'n/a', orderAmount: amount, prev, remaining: ad.amountUsdt }, 'Ad liquidity reduced by new order');
       }
+    });
+
+    // Allow refill only after a confirmed release (you got paid)
+    this.bus.on('order:released', ({ side }) => {
+      this.refillAllowed.set(side, true);
+      log.info({ side }, 'Order released — ad refill allowed');
     });
 
     // Restore ad liquidity on cancelled orders
@@ -345,12 +356,17 @@ export class AdManager {
 
     if (existing) {
       const priceChanged = this.repriceEnabled && Math.abs(existing.price - price) > 0.0001;
-      const quantityLow = existing.amountUsdt < this.config.tradeAmountUsdt * 0.5; // refill when below 50%
-      const needsUpdate = priceChanged || quantityLow;
+      const quantityLow = existing.amountUsdt < this.config.tradeAmountUsdt * 0.5;
+      // Only refill after a confirmed release — prevents overexposure on pending orders
+      const shouldRefill = quantityLow && this.refillAllowed.get(side);
+      const needsUpdate = priceChanged || shouldRefill;
 
       if (needsUpdate) {
         try {
-          const newAmount = quantityLow ? this.config.tradeAmountUsdt : existing.amountUsdt;
+          const newAmount = shouldRefill ? this.config.tradeAmountUsdt : existing.amountUsdt;
+          if (shouldRefill) {
+            this.refillAllowed.set(side, false); // consume the refill allowance
+          }
           await this.bybit.updateAd(existing.bybitAdId, price, newAmount, PAYMENT_METHOD_IDS);
 
           const oldPrice = existing.price;
@@ -371,8 +387,8 @@ export class AdManager {
             );
           }
 
-          if (quantityLow) {
-            log.info({ side, adId: existing.bybitAdId, oldAmount: existing.amountUsdt, newAmount }, 'Ad quantity refilled');
+          if (shouldRefill) {
+            log.info({ side, adId: existing.bybitAdId, oldAmount: existing.amountUsdt, newAmount }, 'Ad quantity refilled after confirmed release');
           }
           if (priceChanged) {
             log.info({ side, adId: existing.bybitAdId, oldPrice, newPrice: price }, 'Ad repriced');
