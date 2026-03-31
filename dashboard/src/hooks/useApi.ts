@@ -217,6 +217,42 @@ export function useReleaseOrder() {
   });
 }
 
+// Guard config
+export interface GuardConfig {
+  gapGuardEnabled: boolean;
+  gapGuardThresholdPercent: number;
+  depthGuardEnabled: boolean;
+  depthGuardMinUsdt: number;
+  sessionDriftGuardEnabled: boolean;
+  sessionDriftThresholdPercent: number;
+}
+
+export function useGuardConfig() {
+  return useQuery({
+    queryKey: ['guardConfig'],
+    queryFn: () => fetchJson<GuardConfig>('/api/config/guards'),
+  });
+}
+
+export function useUpdateGuardConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (updates: Partial<GuardConfig>) => {
+      const res = await fetch('/api/config/guards', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update guard config');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guardConfig'] });
+      queryClient.invalidateQueries({ queryKey: ['status'] });
+    },
+  });
+}
+
 export function useDisputeOrder() {
   const queryClient = useQueryClient();
   return useMutation({

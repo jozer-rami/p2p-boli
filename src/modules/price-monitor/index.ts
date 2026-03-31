@@ -284,4 +284,27 @@ export class PriceMonitor {
     this.config = { ...this.config, volatilityWindowMinutes: minutes };
     log.info({ minutes }, 'Volatility window updated');
   }
+
+  updateGuardConfig(updates: Partial<PriceMonitorConfig>): void {
+    this.config = { ...this.config, ...updates };
+    log.info({ updates }, 'Guard config updated');
+  }
+
+  getGuardConfig(): {
+    gapGuardEnabled: boolean;
+    gapGuardThresholdPercent: number;
+    depthGuardEnabled: boolean;
+    depthGuardMinUsdt: number;
+    sessionDriftGuardEnabled: boolean;
+    sessionDriftThresholdPercent: number;
+  } {
+    return {
+      gapGuardEnabled: this.config.gapGuardEnabled ?? false,
+      gapGuardThresholdPercent: this.config.gapGuardThresholdPercent ?? 2,
+      depthGuardEnabled: this.config.depthGuardEnabled ?? false,
+      depthGuardMinUsdt: this.config.depthGuardMinUsdt ?? 100,
+      sessionDriftGuardEnabled: this.config.sessionDriftGuardEnabled ?? false,
+      sessionDriftThresholdPercent: this.config.sessionDriftThresholdPercent ?? 3,
+    };
+  }
 }

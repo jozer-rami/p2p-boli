@@ -11,6 +11,7 @@ import { createTradesRouter } from './routes/trades.js';
 import { createPricesRouter } from './routes/prices.js';
 import { createBanksRouter } from './routes/banks.js';
 import { createSimulateRouter } from './routes/simulate.js';
+import { createConfigRouter } from './routes/config.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { EventBus } from '../event-bus.js';
 import type { DB } from '../db/index.js';
@@ -58,6 +59,10 @@ export function createApiServer(deps: ApiDeps) {
   app.use('/api', createSimulateRouter({
     bankManager: deps.bankManager,
     qrPreMessage: deps.qrPreMessage,
+  }));
+  app.use('/api', createConfigRouter({
+    db: deps.db,
+    priceMonitor: deps.priceMonitor,
   }));
 
   // Serve built React dashboard in production
