@@ -114,6 +114,81 @@ The web dashboard runs on the same port as the API (default 3000). Features:
 | GET | `/api/trades` | Trade history |
 | GET | `/api/prices` | Current market prices |
 
+## Deployment (Hetzner)
+
+Runs on a Hetzner CPX11 (2 vCPU, 2 GB RAM) at `87.99.134.245` via Docker Compose.
+
+### Server layout
+
+```
+/opt/boli/
+  .env              # Secrets (not in git)
+  data/             # Persisted volume — SQLite DB + QR images
+  docker-compose.yml
+  Dockerfile
+  ...rest of repo
+```
+
+### Port allocation
+
+| Port | Service |
+|------|---------|
+| 3001 | Boli dashboard + API |
+| 3030 | Copy-trader dashboard |
+| 5432 | PostgreSQL (copy-trader) |
+| 9090 | Copy-trader metrics |
+
+### Access
+
+- **Dashboard**: `http://87.99.134.245:3001`
+- **API**: `http://87.99.134.245:3001/api/status`
+- **WebSocket**: `ws://87.99.134.245:3001/ws`
+
+Access is restricted by Hetzner cloud firewall (`polymarket-bot-fw`). To allow a new IP:
+
+```bash
+hcloud firewall add-rule polymarket-bot-fw \
+  --direction in --protocol tcp --port 3001 \
+  --source-ips <your-ip>/32 \
+  --description "Boli dashboard from <location>"
+```
+
+### Deploy updates
+
+```bash
+./scripts/deploy.sh
+# or manually:
+ssh root@87.99.134.245 "cd /opt/boli && git pull origin main && docker compose up -d --build"
+```
+
+### SSH access
+
+```bash
+ssh root@87.99.134.245
+```
+
+Deploy key (`~/.ssh/boli_deploy` on server) has read-only access to the repo. SSH config routes `github.com` through this key.
+
+### Common operations
+
+```bash
+# Logs
+ssh root@87.99.134.245 "docker compose -f /opt/boli/docker-compose.yml logs --tail 50"
+
+# Restart
+ssh root@87.99.134.245 "docker compose -f /opt/boli/docker-compose.yml restart"
+
+# Go live (disable dry run)
+ssh root@87.99.134.245 "sed -i 's/DRY_RUN=true/DRY_RUN=false/' /opt/boli/.env && docker compose -f /opt/boli/docker-compose.yml restart"
+
+# Check health
+ssh root@87.99.134.245 "docker compose -f /opt/boli/docker-compose.yml ps"
+```
+
+### Firewall note
+
+The Hetzner cloud firewall (`polymarket-bot-fw`) allowlists IPs per port. If your ISP changes your IP, you'll lose access. Add the new IP with `hcloud firewall add-rule` (see above). Old rules can be cleaned up in the [Hetzner console](https://console.hetzner.cloud/).
+
 ## Tech Stack
 
 - **Runtime**: Node.js + TypeScript (ESM)
