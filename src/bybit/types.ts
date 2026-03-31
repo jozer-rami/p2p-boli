@@ -35,3 +35,20 @@ export interface BybitBalance {
   available: number;
   frozen: number;
 }
+
+export interface OrderBookAd {
+  id: string;
+  side: 'buy' | 'sell';
+  price: number;
+  quantity: number;
+  minAmount: number;
+  maxAmount: number;
+  nickName: string;
+  userId: string;
+  recentOrderNum: number;
+  recentExecuteRate: number;
+  authTag: string[];
+  authStatus: number;
+  isOnline: boolean;
+  userType: string;
+}

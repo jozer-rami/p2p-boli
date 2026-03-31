@@ -2,7 +2,7 @@ import { RestClientV5 } from 'bybit-api';
 import { withRetry } from '../utils/retry.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { Side } from '../event-bus.js';
-import type { BybitAdParams, BybitAd, BybitOrder, BybitBalance } from './types.js';
+import type { BybitAdParams, BybitAd, BybitOrder, BybitBalance, OrderBookAd } from './types.js';
 
 const log = createModuleLogger('bybit-client');
 
@@ -98,6 +98,38 @@ export class BybitClient {
         price: parseFloat(ad.price),
         amount: parseFloat(ad.lastQuantity),
         status: String(ad.status),
+      }));
+    }, RETRY_OPTIONS);
+  }
+
+  async getOnlineAdsEnriched(side: Side, currencyId: string, fiatId: string): Promise<OrderBookAd[]> {
+    return withRetry(async () => {
+      const res = await this.client.getP2POnlineAds({
+        tokenId: currencyId,
+        currencyId: fiatId,
+        side: side === 'buy' ? '1' : '0',
+      });
+
+      if (getRetCode(res) !== 0) {
+        throw new Error(`getOnlineAdsEnriched failed: ${getRetMsg(res)} (code ${getRetCode(res)})`);
+      }
+
+      const items = getResult(res)?.items ?? [];
+      return items.map((ad: any) => ({
+        id: String(ad.id),
+        side: (ad.side === 1 || ad.side === '1') ? 'sell' : 'buy' as Side,
+        price: parseFloat(ad.price),
+        quantity: parseFloat(ad.lastQuantity || ad.quantity || '0'),
+        minAmount: parseFloat(ad.minAmount || '0'),
+        maxAmount: parseFloat(ad.maxAmount || '0'),
+        nickName: ad.nickName || '',
+        userId: String(ad.userId || ''),
+        recentOrderNum: parseInt(ad.recentOrderNum || '0'),
+        recentExecuteRate: parseInt(ad.recentExecuteRate || '0'),
+        authTag: Array.isArray(ad.authTag) ? ad.authTag : [],
+        authStatus: parseInt(ad.authStatus || '0'),
+        isOnline: Boolean(ad.isOnline),
+        userType: String(ad.userType || 'PERSONAL'),
       }));
     }, RETRY_OPTIONS);
   }
