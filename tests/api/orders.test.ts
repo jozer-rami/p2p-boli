@@ -34,6 +34,15 @@ function createMockDeps() {
     bankManager: {
       getAccountById: vi.fn((id: number) => id === 1 ? { id: 1, name: 'Banco Union' } : undefined),
     },
+    db: {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            get: vi.fn(() => undefined),
+          })),
+        })),
+      })),
+    },
   };
 }
 

@@ -40,6 +40,7 @@ function createMockDeps() {
     },
     emergencyStop: {
       getState: vi.fn(() => 'running'),
+      setState: vi.fn(),
       trigger: vi.fn(),
       resolve: vi.fn(),
     },
