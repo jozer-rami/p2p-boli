@@ -74,6 +74,9 @@ export class AdManager {
     ['buy', false],
     ['sell', false],
   ]);
+  /** Manual price override — holds a forced price for a fixed window */
+  private manualHoldUntil: Map<Side, number> = new Map();
+  private manualHoldPrice: Map<Side, number> = new Map();
 
   constructor(
     bus: EventBus,
@@ -247,6 +250,17 @@ export class AdManager {
         switch (result.action) {
           case 'reprice':
             for (const side of ['buy', 'sell'] as Side[]) {
+              const holdUntil = this.manualHoldUntil.get(side);
+              if (holdUntil && holdUntil > Date.now()) {
+                log.debug({ side, remainingMs: holdUntil - Date.now() }, 'Skipping side — manual hold active');
+                continue;
+              }
+              if (holdUntil && holdUntil <= Date.now()) {
+                this.manualHoldUntil.delete(side);
+                this.manualHoldPrice.delete(side);
+                await this.bus.emit('ad:manual-hold-expired', { side }, MODULE);
+                log.info({ side }, 'Manual hold expired — engine resumed');
+              }
               const price = side === 'buy' ? result.buyPrice : result.sellPrice;
               const manualPaused = this.pausedSides.get(side) ?? false;
               await this.manageSide(side, price, manualPaused);
@@ -322,6 +336,17 @@ export class AdManager {
 
     const sides: Side[] = ['buy', 'sell'];
     for (const side of sides) {
+      const holdUntil = this.manualHoldUntil.get(side);
+      if (holdUntil && holdUntil > Date.now()) {
+        log.debug({ side, remainingMs: holdUntil - Date.now() }, 'Skipping side — manual hold active');
+        continue;
+      }
+      if (holdUntil && holdUntil <= Date.now()) {
+        this.manualHoldUntil.delete(side);
+        this.manualHoldPrice.delete(side);
+        await this.bus.emit('ad:manual-hold-expired', { side }, MODULE);
+        log.info({ side }, 'Manual hold expired — engine resumed');
+      }
       const price = side === 'buy' ? buyPrice : sellPrice;
       const manualPaused = this.pausedSides.get(side) ?? false;
       await this.manageSide(side, price, manualPaused);
@@ -577,6 +602,20 @@ export class AdManager {
     log.info({ repriceEnabled: enabled }, 'Reprice mode updated');
   }
 
+  async forceReprice(side: Side, price: number): Promise<void> {
+    this.manualHoldUntil.set(side, Date.now() + 240_000);
+    this.manualHoldPrice.set(side, price);
+    await this.manageSide(side, price, false);
+    await this.bus.emit('ad:manual-reprice', { side, price, holdUntilMs: 240_000 }, MODULE);
+    log.info({ side, price, holdMinutes: 4 }, 'Manual reprice forced');
+  }
+
+  clearManualHold(side: Side): void {
+    this.manualHoldUntil.delete(side);
+    this.manualHoldPrice.delete(side);
+    log.info({ side }, 'Manual hold cleared');
+  }
+
   updateConfig(config: PricingConfig): void {
     this.config = config;
     log.info({ config }, 'AdManager config updated');
@@ -632,5 +671,18 @@ export class AdManager {
       : this.imbalancePaused.get('buy') ? 'buy' as Side
       : null;
     return { sellVol, buyVol, net, threshold: this.config.imbalanceThresholdUsdt, pausedSide };
+  }
+
+  getManualHold(): Record<Side, { price: number; holdUntil: number } | null> {
+    const now = Date.now();
+    const result: Record<Side, { price: number; holdUntil: number } | null> = { buy: null, sell: null };
+    for (const side of ['buy', 'sell'] as Side[]) {
+      const until = this.manualHoldUntil.get(side);
+      const price = this.manualHoldPrice.get(side);
+      if (until && price && until > now) {
+        result[side] = { price, holdUntil: until };
+      }
+    }
+    return result;
   }
 }
