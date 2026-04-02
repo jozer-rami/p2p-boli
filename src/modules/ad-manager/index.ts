@@ -155,15 +155,25 @@ export class AdManager {
           .where(eq(ads.bybitAdId, ad.id))
           .get();
 
+        // If DB doesn't have a bank account for this ad, assign the best available one
+        let bankAccountId = dbRow?.bankAccountId ?? null;
+        if (!bankAccountId) {
+          const account = this.getBankAccount(ad.side, ad.amount);
+          if (account) {
+            bankAccountId = account.id;
+            log.info({ adId: ad.id, bankAccountId }, 'Assigned bank account to synced ad');
+          }
+        }
+
         this.activeAds.set(ad.side, {
           bybitAdId: ad.id,
           side: ad.side,
           price: ad.price,
           amountUsdt: ad.amount,
-          bankAccountId: dbRow?.bankAccountId ?? null,
+          bankAccountId,
         });
 
-        log.info({ adId: ad.id, side: ad.side, price: ad.price }, 'Synced existing ad');
+        log.info({ adId: ad.id, side: ad.side, price: ad.price, bankAccountId }, 'Synced existing ad');
       }
     } catch (err) {
       log.error({ err }, 'Failed to sync existing ads from Bybit');
