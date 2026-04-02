@@ -44,12 +44,22 @@ else → clear expired hold, let engine proceed
 
 This applies in both the repricing engine path and the legacy fallback path.
 
+**Hold expiry notification:**
+When the tick loop clears an expired hold, emit `ad:manual-hold-expired` event with `{ side }`.
+
 ### Event bus
 
-Add `ad:manual-reprice` event type:
+Add two event types:
 ```ts
 'ad:manual-reprice': { side: Side; price: number; holdUntilMs: number }
+'ad:manual-hold-expired': { side: Side }
 ```
+
+### Telegram notifications (`src/modules/telegram/alerts.ts`)
+
+Wire both events to Telegram alerts:
+- `ad:manual-reprice` → `"🎯 Manual reprice: {side} → {price} BOB (holding 4 min)"`
+- `ad:manual-hold-expired` → `"🔄 Manual hold expired ({side}) — engine resumed"`
 
 ### API endpoints (`src/api/routes/repricing.ts`)
 
@@ -75,9 +85,14 @@ Response:
 
 For both-sides format, return an array of results.
 
-**`DELETE /repricing/force?side=sell`**
+**`POST /repricing/force/cancel`**
 
-Clears the manual hold for the given side. Accepts `side=buy`, `side=sell`, or `side=both`.
+Request body:
+```json
+{ "side": "sell" }
+```
+
+Accepts `side` values: `"buy"`, `"sell"`, or `"both"`.
 
 Response:
 ```json
@@ -110,24 +125,32 @@ Bottom of the existing `RepricingConfig` panel (`dashboard/src/components/Repric
 ### Layout
 
 A "Manual Reprice" section with:
-- Two inline rows (Buy / Sell), each with:
-  - A number input pre-filled with the current live ad price (from `GET /repricing/status`)
-  - A "Force" button
+- Two compact inline rows (Buy / Sell), matching the Spread Bounds style (`flex items-center gap-1.5`):
+  - `Buy [input] [Force]` / `Sell [input] [Force]`
+  - Input pre-filled with the current live ad price (from `GET /repricing/status`)
+  - Force button uses existing `text-xs px-3 py-1 rounded` button style
 - When a hold is active on a side:
-  - Input shows the forced price (read-only while holding)
-  - Button replaced by a countdown badge (e.g., "Holding 2:34") with subtle pulsing border
-  - Small "Cancel" text link to clear the hold via `DELETE /repricing/force`
-- When hold expires: badge disappears, input returns to normal editable state
+  - Input stays editable — re-forcing resets the 4-minute timer (lets you correct a typo without Cancel)
+  - Force button replaced by a static amber badge (`bg-amber-600/20 text-amber-400 font-num text-xs`) showing countdown (e.g., "2:34")
+  - Small "Cancel" text link next to badge to clear the hold via `POST /repricing/force/cancel`
+- When hold expires: badge disappears, Force button returns
+
+### OperationsStrip indicator (`dashboard/src/components/OperationsStrip.tsx`)
+
+When a manual hold is active for a side, show a `MANUAL` tag next to that side's price in the strip:
+- Use `text-amber-400 text-[10px] uppercase font-semibold` to match existing label style
+- Placed right after the price value: `Buy 6.920 MANUAL`
+- Requires extending the `/api/operations` or `/api/repricing/status` response to include hold state (whichever the strip already consumes)
 
 ### API hooks (`dashboard/src/hooks/useApi.ts`)
 
 - `useForceReprice()` — `useMutation` calling `POST /api/repricing/force`, invalidates `repricing-status` query key on success
-- `useCancelForceReprice()` — `useMutation` calling `DELETE /api/repricing/force`, invalidates `repricing-status` query key on success
+- `useCancelForceReprice()` — `useMutation` calling `POST /api/repricing/force/cancel`, invalidates `repricing-status` query key on success
 - Extend existing `useRepricingStatus()` return type to include `manualHold`
 
 ### Countdown behavior
 
-The countdown updates every second using a local `setInterval`. When `remainingMs` hits 0, the badge disappears and the input becomes editable again. The next status poll confirms the engine has resumed.
+The countdown updates every second using a local `setInterval`. When `remainingMs` hits 0, the badge disappears and the Force button returns. The next status poll confirms the engine has resumed.
 
 ## Testing
 
@@ -143,7 +166,7 @@ The countdown updates every second using a local `setInterval`. When `remainingM
 - `POST /repricing/force` with valid both-sides payload
 - `POST /repricing/force` rejects invalid price (negative, out of range)
 - `POST /repricing/force` rejects invalid side
-- `DELETE /repricing/force?side=sell` clears hold
+- `POST /repricing/force/cancel` clears hold
 - `GET /repricing/status` includes `manualHold` field
 
 ### Dashboard
@@ -154,3 +177,4 @@ The countdown updates every second using a local `setInterval`. When `remainingM
 - Persisting manual holds to DB (in-memory only, lost on restart — intentional)
 - Telegram command for forcing price (can be added later)
 - Configurable hold duration (fixed at 4 minutes)
+- Pulsing/animated UI elements (dashboard aesthetic is static and data-dense)
