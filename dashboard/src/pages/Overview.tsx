@@ -47,6 +47,25 @@ export default function Overview() {
 
       <div className="grid gap-10" style={{ gridTemplateColumns: '2fr 1fr' }}>
         <div>
+          {s.activeAds.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xs uppercase text-text-faint tracking-wide mb-3">Active Ads</h2>
+              <div className="flex flex-col gap-2">
+                {s.activeAds.map((ad: any) => (
+                  <div key={`${ad.side}-${ad.price}`} className="flex items-baseline gap-3">
+                    <span className={`text-xs font-semibold uppercase ${ad.side === 'sell' ? 'text-amber-400' : 'text-blue-400'}`}>
+                      {ad.side}
+                    </span>
+                    <span className="font-num text-sm">{ad.amountUsdt} USDT</span>
+                    <span className="text-text-faint text-xs">@</span>
+                    <span className="font-num text-sm">{ad.price.toFixed(3)}</span>
+                    <span className="text-text-faint text-xs">BOB</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <h2 className="text-xs uppercase text-text-faint tracking-wide mb-3">Active Orders</h2>
           {orderList.length === 0 ? (
             <div className="text-text-faint text-sm py-4">
