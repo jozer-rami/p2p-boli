@@ -87,6 +87,10 @@ export interface EventMap {
     mode: string;
     reason: string;
   };
+
+  // Manual reprice events
+  'ad:manual-reprice': { side: Side; price: number; holdUntilMs: number };
+  'ad:manual-hold-expired': { side: Side };
 }
 
 type Handler<T> = (payload: T) => void | Promise<void>;
