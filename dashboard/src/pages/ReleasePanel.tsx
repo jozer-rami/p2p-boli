@@ -126,7 +126,7 @@ export default function ReleasePanel() {
         )}
         <button
           onClick={() => { setReleaseError(null); setShowConfirm(true); }}
-          disabled={o.status !== 'payment_marked'}
+          disabled={o.status !== 'payment_marked' && o.status !== 'awaiting_payment'}
           className="w-full py-3 text-sm font-semibold bg-green-600 hover:bg-green-500 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           Release {o.totalBob.toFixed(2)} BOB to {o.counterpartyName}
