@@ -147,6 +147,14 @@ export class TelegramBot {
       void this.send(`🔄 Ad repriced (${payload.side.toUpperCase()}): ${payload.oldPrice} → ${payload.newPrice} BOB/USDT`);
     });
 
+    this.bus.on('ad:manual-reprice', (payload) => {
+      void this.send(`🎯 Manual reprice: ${payload.side.toUpperCase()} → ${payload.price} BOB (holding 4 min)`);
+    });
+
+    this.bus.on('ad:manual-hold-expired', (payload) => {
+      void this.send(`🔄 Manual hold expired (${payload.side.toUpperCase()}) — engine resumed`);
+    });
+
     this.bus.on('ad:resumed', (payload) => {
       void this.send(`▶️ Trading resumed (${payload.side.toUpperCase()}) — market spread recovered`);
     });
