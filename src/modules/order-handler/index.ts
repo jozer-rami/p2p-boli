@@ -48,6 +48,7 @@ export class OrderHandler {
   private readonly db: DB;
   private readonly bybit: BybitClient;
   private autoCancelTimeoutMs: number;
+  private getBankAccountForSide: (side: string) => number;
 
   /** In-memory map of orderId → TrackedOrder */
   private readonly trackedOrders: Map<string, TrackedOrder> = new Map();
@@ -59,11 +60,13 @@ export class OrderHandler {
     db: DB,
     bybit: BybitClient,
     autoCancelTimeoutMs = 900_000,
+    getBankAccountForSide: (side: string) => number = () => 0,
   ) {
     this.bus = bus;
     this.db = db;
     this.bybit = bybit;
     this.autoCancelTimeoutMs = autoCancelTimeoutMs;
+    this.getBankAccountForSide = getBankAccountForSide;
 
     // Listen for manual release/dispute commands from Telegram
     this.bus.on('telegram:release', ({ orderId }) => {
@@ -96,6 +99,7 @@ export class OrderHandler {
 
         if (TERMINAL_STATUSES.includes(status)) continue;
 
+        const bankAccountId = this.getBankAccountForSide(order.side);
         const tracked: TrackedOrder = {
           id: order.id,
           side: order.side,
@@ -105,13 +109,13 @@ export class OrderHandler {
           status,
           counterpartyId: order.counterpartyId ?? '',
           counterpartyName: order.counterpartyName ?? '',
-          bankAccountId: 0, // resolved later via DB if needed
+          bankAccountId,
           createdAt: order.createdAt,
           autoCancelAt: order.createdAt + this.autoCancelTimeoutMs,
         };
 
         this.trackedOrders.set(order.id, tracked);
-        log.info({ orderId: order.id, status }, 'Synced pending order from Bybit');
+        log.info({ orderId: order.id, status, bankAccountId }, 'Synced pending order from Bybit');
       }
 
       log.info({ count: this.trackedOrders.size }, 'Pending order sync complete');
@@ -160,7 +164,7 @@ export class OrderHandler {
             status: newStatus,
             counterpartyId: order.counterpartyId ?? '',
             counterpartyName: order.counterpartyName ?? '',
-            bankAccountId: 0,
+            bankAccountId: this.getBankAccountForSide(order.side),
             createdAt: order.createdAt,
             autoCancelAt: order.createdAt + this.autoCancelTimeoutMs,
           };

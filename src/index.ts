@@ -175,7 +175,10 @@ const repricingEngine = new RepricingEngine(
 
 adManager.setEngine(repricingEngine);
 
-const orderHandler = new OrderHandler(bus, db, bybitClient, autoCancelTimeoutMs);
+const orderHandler = new OrderHandler(bus, db, bybitClient, autoCancelTimeoutMs, (side) => {
+  const ad = adManager.getActiveAds().get(side);
+  return ad?.bankAccountId ?? 0;
+});
 
 // ---------------------------------------------------------------------------
 // Helper functions for EmergencyStop and CommandDeps
